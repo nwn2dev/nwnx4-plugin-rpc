@@ -33,6 +33,12 @@ jobs:
         run: |
           go build -ldflags '-s -w' -o dist/xp_rpc.dll -buildmode=c-shared src/lib.go
 
+      # Copy proto into
+      - name: Copy Protobufs into package
+        shell: bash
+        run: |
+          cp -r ./proto ./dist
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
