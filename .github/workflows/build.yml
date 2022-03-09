@@ -1,11 +1,6 @@
 name: NWNX4-plugins-xp_rpc
 on: [push, pull_request]
 
-env:
-  GOOS: windows
-  GOARCH: 386
-  CGO_ENABLED: 1
-
 jobs:
   build:
     name: Build
@@ -30,6 +25,10 @@ jobs:
 
       # Build Win32 DLL
       - name: Build Win32 x86 DLL for NWNX4
+        env:
+          GOOS: windows
+          GOARCH: 386
+          CGO_ENABLED: 1
         shell: bash
         run: |
           go build -ldflags '-s -w' -o dist/xp_rpc.dll -buildmode=c-shared src/lib.go
