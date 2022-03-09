@@ -20,9 +20,10 @@ jobs:
 
       # Install base requirements
       - name: Install Go requirements
-        shell: 'bash'
+        shell: bash
+        working-directory: src
         run: |
-          go get -v -t -d ./src
+          go get -v -t -d
 
       # Build Win32 DLL
       - name: Build Win32 x86 DLL for NWNX4
@@ -32,7 +33,7 @@ jobs:
           CGO_ENABLED: 1
         shell: bash
         run: |
-          go build -ldflags '-s -w' -o dist/xp_rpc.dll -buildmode=c-shared src/lib.go
+          go build -ldflags '-s -w' -o ./dist/xp_rpc.dll -buildmode=c-shared ./src/lib.go
 
       # Copy proto into
       - name: Copy Protobufs into package
