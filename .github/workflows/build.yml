@@ -23,6 +23,7 @@ jobs:
         env:
           GOOS: windows
           GOARCH: 386
+          GO111MODULE: off
           CGO_ENABLED: 1
         shell: bash
         run: |
