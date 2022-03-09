@@ -11,12 +11,24 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      # Install go
+      # Install Go
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.18.0-rc1
           stable: false
+
+      # Install Go dependencies
+      - name: Install Go dependencies
+        shell: bash
+        run: |
+          go get github.com/sirupsen/logrus
+          go get google.golang.org/grpc
+          go get google.golang.org/grpc/codes
+          go get google.golang.org/grpc/status
+          go get google.golang.org/protobuf/types/known/emptypb
+          go get google.golang.org/protobuf/types/known/wrapperspb
+          go get gopkg.in/yaml.v3
 
       # Build Win32 DLL
       - name: Build Win32 x86 DLL for NWNX4
