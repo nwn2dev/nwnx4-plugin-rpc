@@ -18,13 +18,6 @@ jobs:
           go-version: 1.18.0-rc1
           stable: false
 
-      # Install base requirements
-      - name: Install Go requirements
-        shell: bash
-        working-directory: src
-        run: |
-          go get -v -t -d
-
       # Build Win32 DLL
       - name: Build Win32 x86 DLL for NWNX4
         env:
@@ -33,7 +26,7 @@ jobs:
           CGO_ENABLED: 1
         shell: bash
         run: |
-          go build -ldflags '-s -w' -o ./dist/xp_rpc.dll -buildmode=c-shared ./src/lib.go
+          go build -ldflags '-s -w' -o ./dist/xp_rpc.dll -buildmode=c-shared ./xp_rpc/main.go
 
       # Copy proto into
       - name: Copy Protobufs into package

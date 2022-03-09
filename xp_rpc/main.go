@@ -418,5 +418,4 @@ func SetString(sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
 var plugin rpcPlugin
 
 // TODO: Never called, but needed. Fix in future releases.
-func main() {
-}
+func main() {}
