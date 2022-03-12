@@ -3,6 +3,7 @@ on: [push, pull_request]
 
 jobs:
   build:
+    name: Build NWNX4 plugin xp_rpc
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
