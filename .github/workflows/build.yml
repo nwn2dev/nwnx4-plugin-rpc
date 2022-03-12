@@ -44,7 +44,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: xp_rpc-${{github.sha}}
-          path: nwx4/plugins/xp_rpc
+          path: dist/
 
   release:
     name: Create release if tagged
@@ -56,11 +56,10 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: xp_rpc-${{github.sha}}
-          path: nwnx4/plugins/xp_rpc
 
       - name: Compress release
         run: |
-          zip -r xp_rpc.zip nwnx4/plugins/xp_rpc
+          zip -r xp_rpc.zip xp_rpc-${{github.sha}}
 
       - name: Extract release info
         shell: bash
