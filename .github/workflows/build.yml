@@ -56,10 +56,11 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: xp_rpc-${{github.sha}}
+          path: dist/
 
       - name: Compress release
         run: |
-          zip -r xp_rpc.zip xp_rpc-${{github.sha}}
+          zip -r xp_rpc.zip dist/
 
       - name: Extract release info
         shell: bash
