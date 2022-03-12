@@ -24,12 +24,12 @@ import (
 )
 
 import (
-	pbCore "xp_rpc/proto"
-	pbNWScript "xp_rpc/proto/nwscript"
+	pbCore "nwnx4.org/xp_rpc/proto"
+	pbNWScript "nwnx4.org/xp_rpc/proto/nwscript"
 )
 
 const PluginName string = "RPC"
-const PluginVersion string = "0.2.0"
+const PluginVersion string = "0.2.1"
 
 type Config struct {
 	Server  *ServerConfig
@@ -208,8 +208,6 @@ func GetVersionDescriptor() *C.char {
 
 //export Init
 func Init(nwnxHome *C.char) C.char {
-	setupRpcPlugin()
-
 	// Setup the log file
 	nwnxHome_ := C.GoString(nwnxHome)
 	logFile, err := os.OpenFile(path.Join(nwnxHome_, "xp_rpc.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
@@ -278,7 +276,8 @@ func GetInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
 	}
 	response, err2 := client.nwnxServiceClient.NWNXGetInt(ctx, &request)
 	if err2 != nil {
-		log.Error(fmt.Sprintf("Call to GetInt returned error: %s", request.String()))
+		log.Error(fmt.Sprintf("Call to GetInt returned error: %s, %s, %d",
+			request.SFunction, request.SParam1, request.NParam2))
 
 		return 0
 	}
@@ -307,7 +306,8 @@ func SetInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.int) {
 	}
 	_, err2 := client.nwnxServiceClient.NWNXSetInt(ctx, &request)
 	if err2 != nil {
-		log.Error(fmt.Sprintf("Call to SetInt returned error: %s", request.String()))
+		log.Error(fmt.Sprintf("Call to SetInt returned error: %s, %s, %d, %d",
+			request.SFunction, request.SParam1, request.NParam2, request.NValue))
 	}
 }
 
@@ -330,7 +330,8 @@ func GetFloat(sFunction, sParam1 *C.char, nParam2 C.int) C.float {
 	}
 	response, err2 := client.nwnxServiceClient.NWNXGetFloat(ctx, &request)
 	if err2 != nil {
-		log.Error(fmt.Sprintf("Call to GetFloat returned error: %s", request.String()))
+		log.Error(fmt.Sprintf("Call to GetFloat returned error: %s, %s, %d",
+			request.SFunction, request.SParam1, request.NParam2))
 
 		return 0.0
 	}
@@ -359,7 +360,8 @@ func SetFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
 	}
 	_, err2 := client.nwnxServiceClient.NWNXSetFloat(ctx, &request)
 	if err2 != nil {
-		log.Error(fmt.Sprintf("Call to SetFloat returned error: %s", request.String()))
+		log.Error(fmt.Sprintf("Call to SetFloat returned error: %s, %s, %d, %f",
+			request.SFunction, request.SParam1, request.NParam2, request.FValue))
 	}
 }
 
@@ -382,7 +384,8 @@ func GetString(sFunction, sParam1 *C.char, nParam2 C.int) *C.char {
 	}
 	response, err2 := client.nwnxServiceClient.NWNXGetString(ctx, &request)
 	if err2 != nil {
-		log.Error(fmt.Sprintf("Call to GetString returned error: %s", request.String()))
+		log.Error(fmt.Sprintf("Call to GetString returned error: %s, %s, %d",
+			request.SFunction, request.SParam1, request.NParam2))
 
 		return nil
 	}
@@ -411,11 +414,13 @@ func SetString(sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
 	}
 	_, err2 := client.nwnxServiceClient.NWNXSetString(ctx, &request)
 	if err2 != nil {
-		log.Error(fmt.Sprintf("Call to SetString returned error: %s", request.String()))
+		log.Error(fmt.Sprintf("Call to SetString returned error: %s, %s, %d, %s",
+			request.SFunction, request.SParam1, request.NParam2, request.SValue))
 	}
 }
 
 var plugin rpcPlugin
 
-// TODO: Never called, but needed. Fix in future releases.
-func main() {}
+func main() {
+	setupRpcPlugin()
+}
