@@ -3,12 +3,18 @@ on: [push, pull_request]
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
           submodules: recursive
+
+      - name: Install dependencies
+        uses: bash
+        run: |
+          apt-get install -y gcc-multilib
+          apt-get install -y gcc-mingw-w64
 
       - name: Setup Go
         uses: actions/setup-go@v2
@@ -17,13 +23,13 @@ jobs:
           stable: false
 
       - name: Build Win32 x86 DLL for NWNX4
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x86
+        uses: bash
         env:
           GOOS: windows
           GOARCH: 386
           CGO_ENABLED: 1
+          CC: i686-w64-mingw32-gcc
+          CXX: i686-w64-mingw32-g++
         working-directory: xp_rpc
         run: go build -v -ldflags '-s -w' -o ../dist/xp_rpc.dll -buildmode=c-shared main.go
 
