@@ -6,20 +6,22 @@ jobs:
     name: Build
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Clone repository
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
           submodules: recursive
 
-      # Install Go
+      - name: Install MinGW
+        uses: egor-tensin/setup-mingw@v2
+
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.18.0-rc1
           stable: false
 
-      # Install Go dependencies
-      - name: Install and build Win32 x86 DLL for NWNX4
+      - name: Build Win32 x86 DLL for NWNX4
         shell: bash
         env:
           GOPROXY: https://goproxy.io,direct
@@ -31,7 +33,6 @@ jobs:
           go get
           go build -ldflags '-s -w' -o ../dist/xp_rpc.dll -buildmode=c-shared main.go
 
-      # Copy proto into
       - name: Copy Protobufs into package
         shell: bash
         run: |
