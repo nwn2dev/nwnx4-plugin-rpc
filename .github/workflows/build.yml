@@ -22,9 +22,9 @@ jobs:
       - name: Install and build Win32 x86 DLL for NWNX4
         shell: bash
         env:
+          GOPROXY: https://goproxy.io,direct
           GOOS: windows
           GOARCH: 386
-          GO111MODULE: off
           CGO_ENABLED: 1
         working-directory: xp_rpc
         run: |
