@@ -19,27 +19,17 @@ jobs:
           stable: false
 
       # Install Go dependencies
-      - name: Install Go dependencies
+      - name: Install and build Win32 x86 DLL for NWNX4
         shell: bash
-        run: |
-          go install github.com/sirupsen/logrus@v1.8.1
-          go install google.golang.org/grpc@1.45.0
-          go install google.golang.org/grpc/codes@1.45.0
-          go install google.golang.org/grpc/status@1.45.0
-          go install google.golang.org/protobuf/types/known/emptypb@v1.27.1
-          go install google.golang.org/protobuf/types/known/wrapperspb@v1.27.1
-          go install gopkg.in/yaml.v3@v3.0.0
-
-      # Build Win32 DLL
-      - name: Build Win32 x86 DLL for NWNX4
         env:
           GOOS: windows
           GOARCH: 386
           GO111MODULE: off
           CGO_ENABLED: 1
-        shell: bash
+        working-directory: xp_rpc
         run: |
-          go build -ldflags '-s -w' -o ./dist/xp_rpc.dll -buildmode=c-shared ./xp_rpc/main.go
+          go get
+          go build -ldflags '-s -w' -o ../dist/xp_rpc.dll -buildmode=c-shared main.go
 
       # Copy proto into
       - name: Copy Protobufs into package

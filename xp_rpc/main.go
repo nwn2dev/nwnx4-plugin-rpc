@@ -8,12 +8,12 @@ import "C"
 import (
 	"context"
 	"fmt"
-	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	empty "google.golang.org/protobuf/types/known/emptypb"
+	wrappers "google.golang.org/protobuf/types/known/wrapperspb"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"net"
@@ -24,8 +24,8 @@ import (
 )
 
 import (
-	pbCore "./proto"
-	pbNWScript "./proto/nwscript"
+	pbCore "xp_rpc/proto"
+	pbNWScript "xp_rpc/proto/nwscript"
 )
 
 const PluginName string = "RPC"
