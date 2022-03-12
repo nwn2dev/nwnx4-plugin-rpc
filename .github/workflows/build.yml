@@ -2,7 +2,6 @@ name: NWNX4-plugins-xp_rpc
 on: [push, pull_request]
 
 jobs:
-  name: "Building NWNX4 xp_rpc plugin"
   build:
     runs-on: windows-latest
     steps:
