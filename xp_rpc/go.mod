@@ -4,7 +4,7 @@ go 1.18
 
 replace nwnx4.org/xp_rpc/proto => ./proto
 
-replace nwnx4.org/xp_rpc/proto/nwscript => ./proto/nwscript
+replace nwnx4.org/xp_rpc/proto/nwscript => ./proto/NWScript
 
 require (
 	github.com/sirupsen/logrus v1.8.1
