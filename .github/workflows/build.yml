@@ -23,7 +23,6 @@ jobs:
           GOPROXY: https://goproxy.io,direct
           GOOS: windows
           GOARCH: 386
-          CGO_ENABLED: 1
         working-directory: xp_rpc
         run: |
           go get
