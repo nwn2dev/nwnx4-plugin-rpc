@@ -24,10 +24,8 @@ jobs:
           GOOS: windows
           GOARCH: 386
           CGO_ENABLED: 1
-          CC: x86_64-w64-mingw32-gcc
-          CXX: x86_64-w64-mingw32-g++
-          working-directory: xp_rpc
-          run: go build -v -ldflags '-s -w' -o ../dist/xp_rpc.dll -buildmode=c-shared main.go
+        working-directory: xp_rpc
+        run: go build -v -ldflags '-s -w' -o ../dist/xp_rpc.dll -buildmode=c-shared main.go
 
       - name: Copy Protobufs into package
         shell: bash
