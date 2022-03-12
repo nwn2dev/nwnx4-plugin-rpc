@@ -10,6 +10,11 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Setup MSVC tools
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
+
       - name: Set up MinGW
         uses: egor-tensin/setup-mingw@v2
         with:
