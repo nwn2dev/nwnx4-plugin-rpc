@@ -22,7 +22,7 @@ jobs:
           stable: false
 
       - name: Build Win32 x86 DLL for NWNX4
-        shell: bash
+        shell: powershell
         env:
           GOOS: windows
           GOARCH: 386
