@@ -10,8 +10,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/credentials/insecure"
 	empty "google.golang.org/protobuf/types/known/emptypb"
 	wrappers "google.golang.org/protobuf/types/known/wrapperspb"
 	"gopkg.in/yaml.v3"
@@ -61,37 +60,37 @@ type rpcServer struct {
 func (s *rpcServer) Trace(ctx context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
 	log.Trace(stringValue.Value)
 
-	return &empty.Empty{}, status.New(codes.OK, "").Err()
+	return &empty.Empty{}, nil
 }
 
 func (s *rpcServer) Debug(ctx context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
 	log.Debug(stringValue.Value)
 
-	return &empty.Empty{}, status.New(codes.OK, "").Err()
+	return &empty.Empty{}, nil
 }
 
 func (s *rpcServer) Info(ctx context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
 	log.Info(stringValue.Value)
 
-	return &empty.Empty{}, status.New(codes.OK, "").Err()
+	return &empty.Empty{}, nil
 }
 
 func (s *rpcServer) Warn(ctx context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
 	log.Warn(stringValue.Value)
 
-	return &empty.Empty{}, status.New(codes.OK, "").Err()
+	return &empty.Empty{}, nil
 }
 
 func (s *rpcServer) Err(ctx context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
 	log.Error(stringValue.Value)
 
-	return &empty.Empty{}, status.New(codes.OK, "").Err()
+	return &empty.Empty{}, nil
 }
 
 func (s *rpcServer) LogStr(ctx context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
 	log.Printf(stringValue.Value)
 
-	return &empty.Empty{}, status.New(codes.OK, "").Err()
+	return &empty.Empty{}, nil
 }
 
 type rpcClient struct {
@@ -129,7 +128,7 @@ func (p rpcPlugin) setupRpcServer(serverConfig *ServerConfig) {
 		return
 	}
 
-	log.Info("Adding server")
+	log.Info(fmt.Sprintf("Adding server@%s", serverConfig.Url))
 	s := grpc.NewServer()
 	p.rpcServer = &rpcServer{}
 
@@ -153,7 +152,7 @@ func (p rpcPlugin) setupRpcServer(serverConfig *ServerConfig) {
 }
 
 func (p rpcPlugin) addRpcClient(name, url string) {
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	conn, err := grpc.Dial(url, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Error(fmt.Sprintf("Unable to login to %s", url))
 
@@ -269,7 +268,7 @@ func GetInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
 		return 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	request := pbNWScript.NWNXGetIntRequest{
 		SFunction: sFunction_,
@@ -278,8 +277,8 @@ func GetInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
 	}
 	response, err2 := client.nwnxServiceClient.NWNXGetInt(ctx, &request)
 	if err2 != nil {
-		log.Error(fmt.Sprintf("Call to GetInt returned error: %s, %s, %d",
-			request.SFunction, request.SParam1, request.NParam2))
+		log.Error(fmt.Sprintf("Call to GetInt returned error: %s; %s, %s, %d",
+			err2, request.SFunction, request.SParam1, request.NParam2))
 
 		return 0
 	}
@@ -298,7 +297,7 @@ func SetInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.int) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	request := pbNWScript.NWNXSetIntRequest{
 		SFunction: sFunction_,
@@ -308,8 +307,8 @@ func SetInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.int) {
 	}
 	_, err2 := client.nwnxServiceClient.NWNXSetInt(ctx, &request)
 	if err2 != nil {
-		log.Error(fmt.Sprintf("Call to SetInt returned error: %s, %s, %d, %d",
-			request.SFunction, request.SParam1, request.NParam2, request.NValue))
+		log.Error(fmt.Sprintf("Call to SetInt returned error: %s; %s, %s, %d, %d",
+			err2, request.SFunction, request.SParam1, request.NParam2, request.NValue))
 	}
 }
 
@@ -323,7 +322,7 @@ func GetFloat(sFunction, sParam1 *C.char, nParam2 C.int) C.float {
 		return 0.0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	request := pbNWScript.NWNXGetFloatRequest{
 		SFunction: sFunction_,
@@ -332,8 +331,8 @@ func GetFloat(sFunction, sParam1 *C.char, nParam2 C.int) C.float {
 	}
 	response, err2 := client.nwnxServiceClient.NWNXGetFloat(ctx, &request)
 	if err2 != nil {
-		log.Error(fmt.Sprintf("Call to GetFloat returned error: %s, %s, %d",
-			request.SFunction, request.SParam1, request.NParam2))
+		log.Error(fmt.Sprintf("Call to GetFloat returned error: %s; %s, %s, %d",
+			err2, request.SFunction, request.SParam1, request.NParam2))
 
 		return 0.0
 	}
@@ -352,7 +351,7 @@ func SetFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	request := pbNWScript.NWNXSetFloatRequest{
 		SFunction: sFunction_,
@@ -362,8 +361,8 @@ func SetFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
 	}
 	_, err2 := client.nwnxServiceClient.NWNXSetFloat(ctx, &request)
 	if err2 != nil {
-		log.Error(fmt.Sprintf("Call to SetFloat returned error: %s, %s, %d, %f",
-			request.SFunction, request.SParam1, request.NParam2, request.FValue))
+		log.Error(fmt.Sprintf("Call to SetFloat returned error: %s; %s, %s, %d, %f",
+			err2, request.SFunction, request.SParam1, request.NParam2, request.FValue))
 	}
 }
 
@@ -377,7 +376,7 @@ func GetString(sFunction, sParam1 *C.char, nParam2 C.int) *C.char {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	request := pbNWScript.NWNXGetStringRequest{
 		SFunction: sFunction_,
@@ -386,8 +385,8 @@ func GetString(sFunction, sParam1 *C.char, nParam2 C.int) *C.char {
 	}
 	response, err2 := client.nwnxServiceClient.NWNXGetString(ctx, &request)
 	if err2 != nil {
-		log.Error(fmt.Sprintf("Call to GetString returned error: %s, %s, %d",
-			request.SFunction, request.SParam1, request.NParam2))
+		log.Error(fmt.Sprintf("Call to GetString returned error: %s; %s, %s, %d",
+			err2, request.SFunction, request.SParam1, request.NParam2))
 
 		return nil
 	}
@@ -406,7 +405,7 @@ func SetString(sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	request := pbNWScript.NWNXSetStringRequest{
 		SFunction: sFunction_,
@@ -416,8 +415,8 @@ func SetString(sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
 	}
 	_, err2 := client.nwnxServiceClient.NWNXSetString(ctx, &request)
 	if err2 != nil {
-		log.Error(fmt.Sprintf("Call to SetString returned error: %s, %s, %d, %s",
-			request.SFunction, request.SParam1, request.NParam2, request.SValue))
+		log.Error(fmt.Sprintf("Call to SetString returned error: %s; %s, %s, %d, %s",
+			err2, request.SFunction, request.SParam1, request.NParam2, request.SValue))
 	}
 }
 
