@@ -59,8 +59,9 @@ jobs:
           path: dist/
 
       - name: Compress release
+        working-directory: dist
         run: |
-          zip -r xp_rpc.zip dist/
+          zip -r ../xp_rpc.zip *
 
       - name: Extract release info
         shell: bash

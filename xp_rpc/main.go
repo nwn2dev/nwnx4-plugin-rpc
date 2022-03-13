@@ -29,7 +29,7 @@ import (
 )
 
 const PluginName string = "RPC"
-const PluginVersion string = "0.2.1"
+const PluginVersion string = "0.2.2"
 
 type Config struct {
 	Server  *ServerConfig
@@ -208,6 +208,8 @@ func GetVersionDescriptor() *C.char {
 
 //export Init
 func Init(nwnxHome *C.char) C.char {
+	setupRpcPlugin()
+
 	// Setup the log file
 	nwnxHome_ := C.GoString(nwnxHome)
 	logFile, err := os.OpenFile(path.Join(nwnxHome_, "xp_rpc.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
@@ -421,6 +423,4 @@ func SetString(sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
 
 var plugin rpcPlugin
 
-func main() {
-	setupRpcPlugin()
-}
+func main() {}
