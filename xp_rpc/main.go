@@ -30,6 +30,8 @@ import (
 const PluginName string = "RPC"
 const PluginVersion string = "0.2.2"
 
+var plugin rpcPlugin
+
 type Config struct {
 	Server  *ServerConfig
 	Clients map[string]string
@@ -419,7 +421,5 @@ func SetString(sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
 			err2, request.SFunction, request.SParam1, request.NParam2, request.SValue))
 	}
 }
-
-var plugin rpcPlugin
 
 func main() {}
