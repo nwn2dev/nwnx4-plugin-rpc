@@ -1,12 +1,22 @@
 package main
 
-// #include <stdlib.h>
-// #include <stdio.h>
-// #include <string.h>
+/*
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+
+typedef struct {
+	const char* dllPath;
+	const char* nwnInstallHomePath;
+	const char* nwnxHomePath;
+} CPluginInitInfo;
+*/
 import "C"
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -19,105 +29,43 @@ import (
 	"os"
 	"path"
 	"time"
-	"unsafe"
-)
 
-import (
+	// Protobuf
 	pbCore "nwnx4.org/xp_rpc/proto"
 	pbNWScript "nwnx4.org/xp_rpc/proto/nwscript"
 )
 
-const PluginName string = "RPC"
-const PluginVersion string = "0.2.2"
+const PluginName string = "RPC"      // Plugin name passed to hook
+const PluginVersion string = "0.2.3" // Plugin version passed to version
 
-var plugin rpcPlugin
-
+// YAML configuration for xp_rpc
 type Config struct {
 	Server  *ServerConfig
 	Clients map[string]string
 }
 
+// YAML server configuration for xp_rpc
 type ServerConfig struct {
 	Url      string
-	Services ServicesConfig
+	Services ServerServicesConfig
 }
 
-type ServicesConfig struct {
+// YAML server services configuration for xp_rpc
+type ServerServicesConfig struct {
 	Logger bool
 }
 
+// Core plugin class; singleton per DLL
 type rpcPlugin struct {
-	header      string
-	description string
-	subClass    string
-	version     string
-	rpcServer   *rpcServer
-	rpcClients  map[string]rpcClient
+	rpcServer  *rpcServer
+	rpcClients map[string]rpcClient
 }
 
-type rpcServer struct {
-	pbCore.UnimplementedLogServiceServer
-}
-
-func (s *rpcServer) Trace(ctx context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
-	log.Trace(stringValue.Value)
-
-	return &empty.Empty{}, nil
-}
-
-func (s *rpcServer) Debug(ctx context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
-	log.Debug(stringValue.Value)
-
-	return &empty.Empty{}, nil
-}
-
-func (s *rpcServer) Info(ctx context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
-	log.Info(stringValue.Value)
-
-	return &empty.Empty{}, nil
-}
-
-func (s *rpcServer) Warn(ctx context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
-	log.Warn(stringValue.Value)
-
-	return &empty.Empty{}, nil
-}
-
-func (s *rpcServer) Err(ctx context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
-	log.Error(stringValue.Value)
-
-	return &empty.Empty{}, nil
-}
-
-func (s *rpcServer) LogStr(ctx context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
-	log.Printf(stringValue.Value)
-
-	return &empty.Empty{}, nil
-}
-
-type rpcClient struct {
-	name                 string
-	url                  string
-	nwnxServiceClient    pbNWScript.NWNXServiceClient
-	messageServiceClient pbCore.MessageServiceClient
-}
-
-func setupRpcPlugin() {
-	plugin = rpcPlugin{
-		header: fmt.Sprintf(
-			"NWNX4 %s Plugin %s \n"+
-				"(c) 2021-2022 by ihatemundays (scottmunday84@gmail.com) \n", PluginName, PluginVersion),
-		description: "A better way to build service-oriented applications in NWN2",
-		subClass:    PluginName,
-		version:     PluginVersion,
-		rpcServer:   nil,
-		rpcClients:  make(map[string]rpcClient),
-	}
-}
-
-func (p rpcPlugin) setupRpcServer(serverConfig *ServerConfig) {
+// initRpcServer initializes the RPC server
+// Runs on an rpcPlugin and accepts a ServerConfig
+func (p *rpcPlugin) initRpcServer(serverConfig *ServerConfig) {
 	if serverConfig == nil {
-		log.Info("Skipping server setup")
+		log.Info("No server configuration; skipping")
 
 		return
 	}
@@ -125,12 +73,12 @@ func (p rpcPlugin) setupRpcServer(serverConfig *ServerConfig) {
 	// Build server
 	listen, err := net.Listen("tcp", serverConfig.Url)
 	if err != nil {
-		log.Error(fmt.Sprintf("Failed to listen: %v", err))
+		log.Error(fmt.Sprintf("Failed to listen at server URL: %v", err))
 
 		return
 	}
 
-	log.Info(fmt.Sprintf("Adding server@%s", serverConfig.Url))
+	log.Info(fmt.Sprintf("Adding server: @%s", serverConfig.Url))
 	s := grpc.NewServer()
 	p.rpcServer = &rpcServer{}
 
@@ -145,18 +93,20 @@ func (p rpcPlugin) setupRpcServer(serverConfig *ServerConfig) {
 		log.Info("Serving server")
 
 		if err := s.Serve(listen); err != nil {
-			log.Error(fmt.Sprintf("Could not serve server at %s", serverConfig.Url))
+			log.Error(fmt.Sprintf("Could not serve server: @%s", serverConfig.Url))
 		}
 
-		log.Info("Serve is closed")
+		log.Info("Server is closed")
 	}
 	go serve(s, listen)
 }
 
-func (p rpcPlugin) addRpcClient(name, url string) {
+// addRpcClient adds an RPC client
+// Runs on an rpcPlugin and adds a client by name and URL
+func (p *rpcPlugin) addRpcClient(name, url string) {
 	conn, err := grpc.Dial(url, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Error(fmt.Sprintf("Unable to login to %s", url))
+		log.Error(fmt.Sprintf("Unable to attach client: @%s", url))
 
 		return
 	}
@@ -168,105 +118,28 @@ func (p rpcPlugin) addRpcClient(name, url string) {
 		messageServiceClient: pbCore.NewMessageServiceClient(conn),
 	}
 
-	log.Info(fmt.Sprintf("Established connection and stubs for %s@%s", name, url))
+	log.Info(fmt.Sprintf("Established client connection and stubs: %s@%s", name, url))
 }
 
-func (p rpcPlugin) getRpcClient(name string) *rpcClient {
+// getRpcClient will get an rpcClient by name
+func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 	rpcClient, exists := p.rpcClients[name]
 	if !exists {
 		log.Error(fmt.Sprintf("Client not declared: %s", name))
 
-		return nil
+		return nil, false
 	}
 
-	return &rpcClient
+	return &rpcClient, true
 }
 
-//export IsProtoPlugin
-func IsProtoPlugin() C.char {
-	return 1
-}
-
-//export GetHeaderDescriptor
-func GetHeaderDescriptor() *C.char {
-	return C.CString(plugin.header)
-}
-
-//export GetDescriptionDescriptor
-func GetDescriptionDescriptor() *C.char {
-	return C.CString(plugin.description)
-}
-
-//export GetSubClassDescriptor
-func GetSubClassDescriptor() *C.char {
-	return C.CString(plugin.subClass)
-}
-
-//export GetVersionDescriptor
-func GetVersionDescriptor() *C.char {
-	return C.CString(plugin.version)
-}
-
-//export Init
-func Init(nwnxHome *C.char) C.char {
-	setupRpcPlugin()
-
-	// Setup the log file
-	nwnxHome_ := C.GoString(nwnxHome)
-	logFile, err := os.OpenFile(path.Join(nwnxHome_, "xp_rpc.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	if err != nil {
-		return 0
-	}
-
-	log.SetFormatter(&log.JSONFormatter{})
-	log.SetOutput(logFile)
-	log.Info(plugin.header)
-
-	// Get YAML file with services
-	configFile, err2 := ioutil.ReadFile(path.Join(nwnxHome_, "xp_rpc.yml"))
-	if err2 != nil {
-		log.Error(err2)
-
-		return 0
-	}
-	config := Config{}
-	err3 := yaml.Unmarshal(configFile, &config)
-	if err3 != nil {
-		log.Error(err3)
-
-		return 0
-	}
-
-	log.Info("Processing configuration file")
-
-	// Build out the server
-	plugin.setupRpcServer(config.Server)
-
-	// Build out the clients
-	for name, url := range config.Clients {
-		log.Info(fmt.Sprintf("Adding client %s@%s", name, url))
-		plugin.addRpcClient(name, url)
-	}
-
-	log.Info("Initialized plugin")
-
-	return 1
-}
-
-//export GetFunctionClass
-func GetFunctionClass(fClass *C.char) {
-	pluginName := C.CString(PluginName)
-	C.strcpy(fClass, pluginName)
-	defer C.free(unsafe.Pointer(pluginName))
-}
-
-//export GetInt
-func GetInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
+// getInt the body of the NWNXGetInt() call
+func (p *rpcPlugin) getInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
-	client := plugin.getRpcClient(sFunction_)
-	if client == nil {
+	client, ok := p.getRpcClient(sFunction_)
+	if !ok {
 		return 0
 	}
 
@@ -277,10 +150,10 @@ func GetInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
 		SParam1:   sParam1_,
 		NParam2:   nParam2_,
 	}
-	response, err2 := client.nwnxServiceClient.NWNXGetInt(ctx, &request)
-	if err2 != nil {
+	response, err := client.nwnxServiceClient.NWNXGetInt(ctx, &request)
+	if err != nil {
 		log.Error(fmt.Sprintf("Call to GetInt returned error: %s; %s, %s, %d",
-			err2, request.SFunction, request.SParam1, request.NParam2))
+			err, request.SFunction, request.SParam1, request.NParam2))
 
 		return 0
 	}
@@ -288,14 +161,14 @@ func GetInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
 	return C.int(response.Value)
 }
 
-//export SetInt
-func SetInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.int) {
+// setInt the body of the NWNXSetInt() call
+func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.int) {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
 	nValue_ := int32(nValue)
-	client := plugin.getRpcClient(sFunction_)
-	if client == nil {
+	client, ok := p.getRpcClient(sFunction_)
+	if !ok {
 		return
 	}
 
@@ -307,20 +180,19 @@ func SetInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.int) {
 		NParam2:   nParam2_,
 		NValue:    nValue_,
 	}
-	_, err2 := client.nwnxServiceClient.NWNXSetInt(ctx, &request)
-	if err2 != nil {
+	if _, err := client.nwnxServiceClient.NWNXSetInt(ctx, &request); err != nil {
 		log.Error(fmt.Sprintf("Call to SetInt returned error: %s; %s, %s, %d, %d",
-			err2, request.SFunction, request.SParam1, request.NParam2, request.NValue))
+			err, request.SFunction, request.SParam1, request.NParam2, request.NValue))
 	}
 }
 
-//export GetFloat
-func GetFloat(sFunction, sParam1 *C.char, nParam2 C.int) C.float {
+// getFloat the body of the NWNXGetFloat() call
+func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, nParam2 C.int) C.float {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
-	client := plugin.getRpcClient(sFunction_)
-	if client == nil {
+	client, ok := p.getRpcClient(sFunction_)
+	if !ok {
 		return 0.0
 	}
 
@@ -331,10 +203,10 @@ func GetFloat(sFunction, sParam1 *C.char, nParam2 C.int) C.float {
 		SParam1:   sParam1_,
 		NParam2:   nParam2_,
 	}
-	response, err2 := client.nwnxServiceClient.NWNXGetFloat(ctx, &request)
-	if err2 != nil {
+	response, err := client.nwnxServiceClient.NWNXGetFloat(ctx, &request)
+	if err != nil {
 		log.Error(fmt.Sprintf("Call to GetFloat returned error: %s; %s, %s, %d",
-			err2, request.SFunction, request.SParam1, request.NParam2))
+			err, request.SFunction, request.SParam1, request.NParam2))
 
 		return 0.0
 	}
@@ -342,14 +214,13 @@ func GetFloat(sFunction, sParam1 *C.char, nParam2 C.int) C.float {
 	return C.float(response.Value)
 }
 
-//export SetFloat
-func SetFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
+func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
 	fValue_ := float32(fValue)
-	client := plugin.getRpcClient(sFunction_)
-	if client == nil {
+	client, ok := p.getRpcClient(sFunction_)
+	if !ok {
 		return
 	}
 
@@ -361,20 +232,19 @@ func SetFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
 		NParam2:   nParam2_,
 		FValue:    fValue_,
 	}
-	_, err2 := client.nwnxServiceClient.NWNXSetFloat(ctx, &request)
-	if err2 != nil {
+	if _, err := client.nwnxServiceClient.NWNXSetFloat(ctx, &request); err != nil {
 		log.Error(fmt.Sprintf("Call to SetFloat returned error: %s; %s, %s, %d, %f",
-			err2, request.SFunction, request.SParam1, request.NParam2, request.FValue))
+			err, request.SFunction, request.SParam1, request.NParam2, request.FValue))
 	}
 }
 
-//export GetString
-func GetString(sFunction, sParam1 *C.char, nParam2 C.int) *C.char {
+// getString the body of the NWNXGetString() call
+func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, nParam2 C.int) *C.char {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
-	client := plugin.getRpcClient(sFunction_)
-	if client == nil {
+	client, ok := p.getRpcClient(sFunction_)
+	if !ok {
 		return nil
 	}
 
@@ -385,10 +255,10 @@ func GetString(sFunction, sParam1 *C.char, nParam2 C.int) *C.char {
 		SParam1:   sParam1_,
 		NParam2:   nParam2_,
 	}
-	response, err2 := client.nwnxServiceClient.NWNXGetString(ctx, &request)
-	if err2 != nil {
+	response, err := client.nwnxServiceClient.NWNXGetString(ctx, &request)
+	if err != nil {
 		log.Error(fmt.Sprintf("Call to GetString returned error: %s; %s, %s, %d",
-			err2, request.SFunction, request.SParam1, request.NParam2))
+			err, request.SFunction, request.SParam1, request.NParam2))
 
 		return nil
 	}
@@ -396,14 +266,14 @@ func GetString(sFunction, sParam1 *C.char, nParam2 C.int) *C.char {
 	return C.CString(response.Value)
 }
 
-//export SetString
-func SetString(sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
+// setString the body of the NWNXSetString() call
+func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
 	sValue_ := C.GoString(sValue)
-	client := plugin.getRpcClient(sFunction_)
-	if client == nil {
+	client, ok := p.getRpcClient(sFunction_)
+	if !ok {
 		return
 	}
 
@@ -415,11 +285,237 @@ func SetString(sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
 		NParam2:   nParam2_,
 		SValue:    sValue_,
 	}
-	_, err2 := client.nwnxServiceClient.NWNXSetString(ctx, &request)
-	if err2 != nil {
+	if _, err := client.nwnxServiceClient.NWNXSetString(ctx, &request); err != nil {
 		log.Error(fmt.Sprintf("Call to SetString returned error: %s; %s, %s, %d, %s",
-			err2, request.SFunction, request.SParam1, request.NParam2, request.SValue))
+			err, request.SFunction, request.SParam1, request.NParam2, request.SValue))
 	}
+}
+
+// rpcServer contains the interfaces to the RPC server
+type rpcServer struct {
+	pbCore.UnimplementedLogServiceServer
+}
+
+// Trace is the method call equivalent on the logger
+func (s *rpcServer) Trace(_ context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
+	log.Trace(stringValue.Value)
+
+	return &empty.Empty{}, nil
+}
+
+// Debug is the method call equivalent on the logger
+func (s *rpcServer) Debug(_ context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
+	log.Debug(stringValue.Value)
+
+	return &empty.Empty{}, nil
+}
+
+// Info is the method call equivalent on the logger
+func (s *rpcServer) Info(_ context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
+	log.Info(stringValue.Value)
+
+	return &empty.Empty{}, nil
+}
+
+// Warn is the method call equivalent on the logger
+func (s *rpcServer) Warn(_ context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
+	log.Warn(stringValue.Value)
+
+	return &empty.Empty{}, nil
+}
+
+// Err is the method call equivalent on the logger
+func (s *rpcServer) Err(_ context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
+	log.Error(stringValue.Value)
+
+	return &empty.Empty{}, nil
+}
+
+// LogStr is the method call equivalent on the logger without a log level
+func (s *rpcServer) LogStr(_ context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
+	log.Printf(stringValue.Value)
+
+	return &empty.Empty{}, nil
+}
+
+// rpcClient contains the clients to RPC microservices
+type rpcClient struct {
+	name                 string
+	url                  string
+	nwnxServiceClient    pbNWScript.NWNXServiceClient
+	messageServiceClient pbCore.MessageServiceClient
+}
+
+// newRpcPlugin builds and returns a new RPC plugin
+func newRpcPlugin() *rpcPlugin {
+	return &rpcPlugin{
+		rpcServer:  nil,
+		rpcClients: make(map[string]rpcClient),
+	}
+}
+
+// All exports to C library
+
+//export NWNXCPlugin_GetAbiVersion
+func NWNXCPlugin_GetAbiVersion() C.uint32_t {
+	return 1
+}
+
+//export NWNXCPlugin_GetPluginName
+func NWNXCPlugin_GetPluginName() *C.char {
+	return C.CString(PluginName)
+}
+
+//export NWNXCPlugin_GetPluginVersion
+func NWNXCPlugin_GetPluginVersion() *C.char {
+	return C.CString(PluginVersion)
+}
+
+var plugin *rpcPlugin
+
+//export NWNXCPlugin_New
+func NWNXCPlugin_New(initInfo *C.CPluginInitInfo) interface{} {
+	plugin = newRpcPlugin()
+
+	// Setup the log file
+	nwnxHomePath_ := C.GoString(initInfo.nwnxHomePath)
+	logFile, err := os.OpenFile(path.Join(nwnxHomePath_, "xp_rpc.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		return nil
+	}
+
+	// Adding the header/description to the log
+	header := fmt.Sprintf(
+		"NWNX4 %s Plugin %s \n"+
+			"(c) 2021-2022 by ihatemundays (scottmunday84@gmail.com) \n", PluginName, PluginVersion)
+	description := "A better way to build service-oriented applications in NWN2"
+
+	log.SetFormatter(&log.JSONFormatter{})
+	log.SetOutput(logFile)
+	log.Info(header)
+	log.Info(description)
+
+	// Get YAML file with services
+	configFile, err2 := ioutil.ReadFile(path.Join(nwnxHomePath_, "xp_rpc.yml"))
+	if err2 != nil {
+		log.Error(err2)
+
+		return nil
+	}
+	config := Config{}
+	err3 := yaml.Unmarshal(configFile, &config)
+	if err3 != nil {
+		log.Error(err3)
+
+		return nil
+	}
+
+	log.Info("Processing configuration file")
+
+	// Initialize the server
+	plugin.initRpcServer(config.Server)
+
+	// Build out the clients
+	for name, url := range config.Clients {
+		log.Info(fmt.Sprintf("Adding client %s@%s", name, url))
+		plugin.addRpcClient(name, url)
+	}
+
+	log.Info("Initialized plugin")
+
+	return &plugin
+}
+
+//export NWNXCPlugin_Delete
+func NWNXCPlugin_Delete(plugin *C.void) C.char {
+	// No pointer, then can't simulate a delete
+	if plugin == nil {
+		return 0
+	}
+
+	// Garbage collection has it
+	return 1
+}
+
+//export NWNXCPlugin_GetInt
+func NWNXCPlugin_GetInt(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int) C.int {
+	plugin, err := getRpcPlugin(ptr)
+	if err != nil {
+		log.Error(err)
+
+		return 0
+	}
+
+	return plugin.getInt(sFunction, sParam1, nParam2)
+}
+
+//export NWNXCPlugin_SetInt
+func NWNXCPlugin_SetInt(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int, nValue C.int) {
+	plugin, err := getRpcPlugin(ptr)
+	if err != nil {
+		log.Error(err)
+
+		return
+	}
+
+	plugin.setInt(sFunction, sParam1, nParam2, nValue)
+}
+
+//export NWNXCPlugin_GetFloat
+func NWNXCPlugin_GetFloat(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int) C.float {
+	plugin, err := getRpcPlugin(ptr)
+	if err != nil {
+		log.Error(err)
+
+		return 0.0
+	}
+
+	return plugin.getFloat(sFunction, sParam1, nParam2)
+}
+
+//export NWNXCPlugin_SetFloat
+func NWNXCPlugin_SetFloat(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
+	plugin, err := getRpcPlugin(ptr)
+	if err != nil {
+		log.Error(err)
+
+		return
+	}
+
+	plugin.setFloat(sFunction, sParam1, nParam2, fValue)
+}
+
+//export NWNXCPlugin_GetString
+func NWNXCPlugin_GetString(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int) *C.char {
+	plugin, err := getRpcPlugin(ptr)
+	if err != nil {
+		log.Error(err)
+
+		return nil
+	}
+
+	return plugin.getString(sFunction, sParam1, nParam2)
+}
+
+//export NWNXCPlugin_SetString
+func NWNXCPlugin_SetString(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
+	plugin, err := getRpcPlugin(ptr)
+	if err != nil {
+		log.Error(err)
+
+		return
+	}
+
+	plugin.setString(sFunction, sParam1, nParam2, sValue)
+}
+
+func getRpcPlugin(ptr interface{}) (*rpcPlugin, error) {
+	plugin, ok := ptr.(*rpcPlugin)
+	if !ok {
+		return nil, errors.New("plugin missing")
+	}
+
+	return plugin, nil
 }
 
 func main() {}
