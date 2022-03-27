@@ -28,15 +28,16 @@ import (
 	"net"
 	"os"
 	"path"
+	"reflect"
 	"time"
-
 	// Protobuf
 	pbCore "nwnx4.org/xp_rpc/proto"
 	pbNWScript "nwnx4.org/xp_rpc/proto/nwscript"
 )
 
-const PluginName string = "RPC"      // Plugin name passed to hook
-const PluginVersion string = "0.2.3" // Plugin version passed to version
+const pluginName string = "RPC"           // Plugin name passed to hook
+const pluginVersion string = "0.2.3"      // Plugin version passed to hook
+const pluginInstance string = "Singleton" // Plugin instance passed to hook
 
 // YAML configuration for xp_rpc
 type Config struct {
@@ -354,6 +355,8 @@ func newRpcPlugin() *rpcPlugin {
 	}
 }
 
+var plugin *rpcPlugin // Singleton
+
 // All exports to C library
 
 //export NWNXCPlugin_GetAbiVersion
@@ -363,31 +366,34 @@ func NWNXCPlugin_GetAbiVersion() C.uint32_t {
 
 //export NWNXCPlugin_GetPluginName
 func NWNXCPlugin_GetPluginName() *C.char {
-	return C.CString(PluginName)
+	return C.CString(pluginName)
 }
 
 //export NWNXCPlugin_GetPluginVersion
 func NWNXCPlugin_GetPluginVersion() *C.char {
-	return C.CString(PluginVersion)
+	return C.CString(pluginVersion)
 }
 
-var plugin *rpcPlugin
+//export NWNXCPlugin_GetPluginInstance
+func NWNXCPlugin_GetPluginInstance() *C.char {
+	return C.CString(pluginInstance)
+}
 
 //export NWNXCPlugin_New
-func NWNXCPlugin_New(initInfo *C.CPluginInitInfo) interface{} {
+func NWNXCPlugin_New(initInfo *C.CPluginInitInfo) C.uint32_t {
 	plugin = newRpcPlugin()
 
 	// Setup the log file
 	nwnxHomePath_ := C.GoString(initInfo.nwnxHomePath)
 	logFile, err := os.OpenFile(path.Join(nwnxHomePath_, "xp_rpc.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		return nil
+		return 0
 	}
 
 	// Adding the header/description to the log
 	header := fmt.Sprintf(
 		"NWNX4 %s Plugin %s \n"+
-			"(c) 2021-2022 by ihatemundays (scottmunday84@gmail.com) \n", PluginName, PluginVersion)
+			"(c) 2021-2022 by ihatemundays (scottmunday84@gmail.com) \n", pluginName, pluginVersion)
 	description := "A better way to build service-oriented applications in NWN2"
 
 	log.SetFormatter(&log.JSONFormatter{})
@@ -400,14 +406,14 @@ func NWNXCPlugin_New(initInfo *C.CPluginInitInfo) interface{} {
 	if err2 != nil {
 		log.Error(err2)
 
-		return nil
+		return 0
 	}
 	config := Config{}
 	err3 := yaml.Unmarshal(configFile, &config)
 	if err3 != nil {
 		log.Error(err3)
 
-		return nil
+		return 0
 	}
 
 	log.Info("Processing configuration file")
@@ -423,23 +429,27 @@ func NWNXCPlugin_New(initInfo *C.CPluginInitInfo) interface{} {
 
 	log.Info("Initialized plugin")
 
-	return &plugin
+	return C.uint32_t(reflect.ValueOf(plugin).Pointer())
 }
 
 //export NWNXCPlugin_Delete
-func NWNXCPlugin_Delete(plugin *C.void) C.char {
+func NWNXCPlugin_Delete(ptr *C.void) C.char {
 	// No pointer, then can't simulate a delete
-	if plugin == nil {
+	_, err := getRpcPlugin(ptr)
+	if err != nil {
+		log.Error(err)
+
 		return 0
 	}
 
-	// Garbage collection has it
+	plugin = nil // If you got this far, the plugin should be the one stored on the DLL
+
 	return 1
 }
 
 //export NWNXCPlugin_GetInt
 func NWNXCPlugin_GetInt(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int) C.int {
-	plugin, err := getRpcPlugin(ptr)
+	_, err := getRpcPlugin(ptr)
 	if err != nil {
 		log.Error(err)
 
@@ -451,7 +461,7 @@ func NWNXCPlugin_GetInt(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int) 
 
 //export NWNXCPlugin_SetInt
 func NWNXCPlugin_SetInt(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int, nValue C.int) {
-	plugin, err := getRpcPlugin(ptr)
+	_, err := getRpcPlugin(ptr)
 	if err != nil {
 		log.Error(err)
 
@@ -463,7 +473,7 @@ func NWNXCPlugin_SetInt(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int, 
 
 //export NWNXCPlugin_GetFloat
 func NWNXCPlugin_GetFloat(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int) C.float {
-	plugin, err := getRpcPlugin(ptr)
+	_, err := getRpcPlugin(ptr)
 	if err != nil {
 		log.Error(err)
 
@@ -475,7 +485,7 @@ func NWNXCPlugin_GetFloat(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int
 
 //export NWNXCPlugin_SetFloat
 func NWNXCPlugin_SetFloat(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
-	plugin, err := getRpcPlugin(ptr)
+	_, err := getRpcPlugin(ptr)
 	if err != nil {
 		log.Error(err)
 
@@ -487,7 +497,7 @@ func NWNXCPlugin_SetFloat(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int
 
 //export NWNXCPlugin_GetString
 func NWNXCPlugin_GetString(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int) *C.char {
-	plugin, err := getRpcPlugin(ptr)
+	_, err := getRpcPlugin(ptr)
 	if err != nil {
 		log.Error(err)
 
@@ -499,7 +509,7 @@ func NWNXCPlugin_GetString(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.in
 
 //export NWNXCPlugin_SetString
 func NWNXCPlugin_SetString(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
-	plugin, err := getRpcPlugin(ptr)
+	_, err := getRpcPlugin(ptr)
 	if err != nil {
 		log.Error(err)
 
@@ -509,6 +519,7 @@ func NWNXCPlugin_SetString(ptr *C.void, sFunction, sParam1 *C.char, nParam2 C.in
 	plugin.setString(sFunction, sParam1, nParam2, sValue)
 }
 
+// Get the RPC plugin from the pointer
 func getRpcPlugin(ptr interface{}) (*rpcPlugin, error) {
 	plugin, ok := ptr.(*rpcPlugin)
 	if !ok {
