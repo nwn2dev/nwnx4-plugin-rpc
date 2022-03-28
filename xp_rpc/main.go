@@ -36,7 +36,7 @@ import (
 )
 
 const pluginName string = "RPC"      // Plugin name passed to hook
-const pluginVersion string = "0.2.3" // Plugin version passed to hook
+const pluginVersion string = "0.2.4" // Plugin version passed to hook
 
 // YAML configuration for xp_rpc
 type Config struct {
