@@ -27,9 +27,8 @@ import (
 	"net"
 	"os"
 	"path"
+	"reflect"
 	"time"
-	"unsafe"
-
 	// Protobuf
 	pbCore "nwnx4.org/xp_rpc/proto"
 	pbNWScript "nwnx4.org/xp_rpc/proto/nwscript"
@@ -359,8 +358,8 @@ var plugin *rpcPlugin // Singleton
 // All exports to C library
 
 //export NWNXCPlugin_GetAbiVersion
-func NWNXCPlugin_GetAbiVersion() C.float {
-	return 1.0
+func NWNXCPlugin_GetAbiVersion() C.int {
+	return 1
 }
 
 //export NWNXCPlugin_GetPluginName
@@ -374,14 +373,14 @@ func NWNXCPlugin_GetPluginVersion() *C.char {
 }
 
 //export NWNXCPlugin_New
-func NWNXCPlugin_New(initInfo *C.CPluginInitInfo) unsafe.Pointer {
+func NWNXCPlugin_New(initInfo *C.CPluginInitInfo) C.uint32_t {
 	plugin = newRpcPlugin()
 
 	// Setup the log file
 	nwnxHomePath_ := C.GoString(initInfo.nwnxHomePath)
 	logFile, err := os.OpenFile(path.Join(nwnxHomePath_, "xp_rpc.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
-		return nil
+		return 0
 	}
 
 	// Adding the header/description to the log
@@ -400,14 +399,14 @@ func NWNXCPlugin_New(initInfo *C.CPluginInitInfo) unsafe.Pointer {
 	if err2 != nil {
 		log.Error(err2)
 
-		return nil
+		return 0
 	}
 	config := Config{}
 	err3 := yaml.Unmarshal(configFile, &config)
 	if err3 != nil {
 		log.Error(err3)
 
-		return nil
+		return 0
 	}
 
 	log.Info("Processing configuration file")
@@ -423,13 +422,17 @@ func NWNXCPlugin_New(initInfo *C.CPluginInitInfo) unsafe.Pointer {
 
 	log.Info("Initialized plugin")
 
-	// There is absolutely no reason to send the plugin back to the hook; all handled by the Go GC
-	return nil
+	// Giving back address
+	return C.uint32_t(reflect.ValueOf(plugin).Pointer())
 }
 
 //export NWNXCPlugin_Delete
-func NWNXCPlugin_Delete(_ *C.void) C.char {
-	return 1 // Don't do a thing
+func NWNXCPlugin_Delete(ptr uintptr) C.char {
+	if ptr == 0 {
+		return 0
+	}
+
+	return 1 // Don't do a thing; picked up in garbage collection
 }
 
 //export NWNXCPlugin_GetInt
