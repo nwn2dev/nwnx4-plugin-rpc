@@ -29,13 +29,14 @@ import (
 	"path"
 	"reflect"
 	"time"
+
 	// Protobuf
 	pbCore "nwnx4.org/xp_rpc/proto"
 	pbNWScript "nwnx4.org/xp_rpc/proto/nwscript"
 )
 
 const pluginName string = "RPC"      // Plugin name passed to hook
-const pluginVersion string = "0.2.4" // Plugin version passed to hook
+const pluginVersion string = "0.2.5" // Plugin version passed to hook
 
 // YAML configuration for xp_rpc
 type Config struct {
@@ -357,23 +358,18 @@ var plugin *rpcPlugin // Singleton
 
 // All exports to C library
 
-//export NWNXCPlugin_GetAbiVersion
-func NWNXCPlugin_GetAbiVersion() C.int {
-	return 1
-}
-
-//export NWNXCPlugin_GetPluginName
-func NWNXCPlugin_GetPluginName() *C.char {
+//export NWNXCPlugin_GetName
+func NWNXCPlugin_GetName() *C.char {
 	return C.CString(pluginName)
 }
 
-//export NWNXCPlugin_GetPluginVersion
-func NWNXCPlugin_GetPluginVersion() *C.char {
+//export NWNXCPlugin_GetVersion
+func NWNXCPlugin_GetVersion() *C.char {
 	return C.CString(pluginVersion)
 }
 
 //export NWNXCPlugin_New
-func NWNXCPlugin_New(initInfo *C.CPluginInitInfo) C.uint32_t {
+func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	plugin = newRpcPlugin()
 
 	// Setup the log file

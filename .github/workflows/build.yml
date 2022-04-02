@@ -33,7 +33,7 @@ jobs:
           CC: i686-w64-mingw32-gcc
           CXX: i686-w64-mingw32-g++
         working-directory: xp_rpc
-        run: go build -ldflags '-s -w' -o ../dist/xp_rpc.dll -buildmode=c-shared main.go
+        run: go build -ldflags '-s -w' -o ../dist/xp_rpc.dll -buildmode=c-shared
 
       - name: Copy Protobufs into package
         shell: bash
