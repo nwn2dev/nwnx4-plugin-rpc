@@ -246,7 +246,7 @@ func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, nParam2 C.int) *C.char
 	nParam2_ := int32(nParam2)
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
-		return nil
+		return C.CString("")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
@@ -261,7 +261,7 @@ func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, nParam2 C.int) *C.char
 		log.Error(fmt.Sprintf("Call to GetString returned error: %s; %s, %s, %d",
 			err, request.SFunction, request.SParam1, request.NParam2))
 
-		return nil
+		return C.CString("")
 	}
 
 	return C.CString(response.Value)
