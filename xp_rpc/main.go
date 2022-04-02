@@ -387,7 +387,7 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 
 	// Adding the header/description to the log
 	header := fmt.Sprintf(
-		"NWNX4 %s Plugin %s \n"+
+		"%s %s \n"+
 			"(c) 2021-2022 by ihatemundays (scottmunday84@gmail.com) \n", pluginName, pluginVersion)
 	description := "A better way to build service-oriented applications in NWN2"
 
