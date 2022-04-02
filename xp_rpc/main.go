@@ -35,8 +35,9 @@ import (
 	pbNWScript "nwnx4.org/xp_rpc/proto/nwscript"
 )
 
-const pluginName string = "RPC"      // Plugin name passed to hook
-const pluginVersion string = "0.2.5" // Plugin version passed to hook
+const pluginName string = "NWNX RPC Plugin" // Plugin name passed to hook
+const pluginVersion string = "0.2.5"        // Plugin version passed to hook
+const pluginID string = "RPC"               // Plugin ID used for identification in the list
 
 // YAML configuration for xp_rpc
 type Config struct {
@@ -368,6 +369,11 @@ func NWNXCPlugin_GetVersion() *C.char {
 	return C.CString(pluginVersion)
 }
 
+//export NWNXCPlugin_GetID
+func NWNXCPlugin_GetID() *C.char {
+	return C.CString(pluginID)
+}
+
 //export NWNXCPlugin_New
 func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	plugin = newRpcPlugin()
@@ -451,9 +457,12 @@ func NWNXCPlugin_SetFloat(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, 
 	plugin.setFloat(sFunction, sParam1, nParam2, fValue)
 }
 
+// TODO: I don't like how this works; it requires you to use a buffer string to return a value, but I must concede
+
 //export NWNXCPlugin_GetString
-func NWNXCPlugin_GetString(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int) *C.char {
-	return plugin.getString(sFunction, sParam1, nParam2)
+func NWNXCPlugin_GetString(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, result *C.char, resultSize C.size_t) {
+	response := plugin.getString(sFunction, sParam1, nParam2)
+	C.strncpy_s(result, resultSize, response, C.strlen(response))
 }
 
 //export NWNXCPlugin_SetString
