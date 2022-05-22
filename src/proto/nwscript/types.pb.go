@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.27.1-devel
 // 	protoc        v3.19.4
-// source: nwscript/types.proto
+// source: include/types.proto
 
 package nwscript
 

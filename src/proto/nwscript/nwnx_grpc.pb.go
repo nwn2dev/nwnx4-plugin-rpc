@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.19.4
-// source: nwscript/nwnx.proto
+// source: include/nwnx.proto
 
 package nwscript
 
@@ -281,5 +281,5 @@ var NWNXService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "nwscript/nwnx.proto",
+	Metadata: "include/nwnx.proto",
 }

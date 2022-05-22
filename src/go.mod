@@ -1,18 +1,18 @@
-module xp_rpc
+module src
 
 go 1.18
 
-replace nwnx4.org/xp_rpc/proto => ./proto
+replace nwnx4.org/src/proto => ./proto
 
-replace nwnx4.org/xp_rpc/proto/nwscript => ./proto/nwscript
+replace nwnx4.org/src/proto/nwscript => ./proto/nwscript
 
 require (
 	github.com/sirupsen/logrus v1.8.1
 	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
-	nwnx4.org/xp_rpc/proto v0.0.0-00010101000000-000000000000
-	nwnx4.org/xp_rpc/proto/nwscript v0.0.0-00010101000000-000000000000
+	nwnx4.org/src/proto v0.0.0-00010101000000-000000000000
+	nwnx4.org/src/proto/nwscript v0.0.0-00010101000000-000000000000
 )
 
 require (

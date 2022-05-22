@@ -1,6 +1,6 @@
 syntax = 'proto3';
 
-option go_package = "xp_rpc/proto/nwscript";
+option go_package = "src/proto/include";
 
 package NWNX4.RPC.Proto.NWScript;
 

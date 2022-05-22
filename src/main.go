@@ -3,13 +3,15 @@ package main
 /*
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdint.h>
+#include <string.h>
 
 typedef struct {
-	const char* dllPath;
-	const char* nwnInstallHomePath;
-	const char* nwnxHomePath;
+	const char* dll_path;
+	const char* nwnx_path;
+	const char* nwn2_install_path;
+	const char* nwn2_home_path;
+	const char* nwn2_module_path;
 } CPluginInitInfo;
 */
 import "C"
@@ -31,27 +33,27 @@ import (
 	"time"
 
 	// Protobuf
-	pbCore "nwnx4.org/xp_rpc/proto"
-	pbNWScript "nwnx4.org/xp_rpc/proto/nwscript"
+	pbCore "nwnx4.org/src/proto"
+	pbNWScript "nwnx4.org/src/proto/nwscript"
 )
 
 const pluginName string = "NWNX RPC Plugin" // Plugin name passed to hook
-const pluginVersion string = "0.2.5"        // Plugin version passed to hook
+const pluginVersion string = "0.2.6"        // Plugin version passed to hook
 const pluginID string = "RPC"               // Plugin ID used for identification in the list
 
-// YAML configuration for xp_rpc
+// YAML configuration for src
 type Config struct {
 	Server  *ServerConfig
 	Clients map[string]string
 }
 
-// YAML server configuration for xp_rpc
+// YAML server configuration for src
 type ServerConfig struct {
 	Url      string
 	Services ServerServicesConfig
 }
 
-// YAML server services configuration for xp_rpc
+// YAML server services configuration for src
 type ServerServicesConfig struct {
 	Logger bool
 }
@@ -359,9 +361,14 @@ var plugin *rpcPlugin // Singleton
 
 // All exports to C library
 
-//export NWNXCPlugin_GetName
-func NWNXCPlugin_GetName() *C.char {
-	return C.CString(pluginName)
+//export NWNXCPlugin_GetID
+func NWNXCPlugin_GetID(_ *C.void) *C.char {
+	return C.CString(pluginID)
+}
+
+//export NWNXCPlugin_GetInfo
+func NWNXCPlugin_GetInfo() *C.char {
+	return C.CString("NWNX4 RPC - A better way to build service-oriented applications in NWN2")
 }
 
 //export NWNXCPlugin_GetVersion
@@ -369,18 +376,13 @@ func NWNXCPlugin_GetVersion() *C.char {
 	return C.CString(pluginVersion)
 }
 
-//export NWNXCPlugin_GetID
-func NWNXCPlugin_GetID() *C.char {
-	return C.CString(pluginID)
-}
-
 //export NWNXCPlugin_New
 func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	plugin = newRpcPlugin()
 
 	// Setup the log file
-	nwnxHomePath_ := C.GoString(initInfo.nwnxHomePath)
-	logFile, err := os.OpenFile(path.Join(nwnxHomePath_, "xp_rpc.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	nwnxHomePath_ := C.GoString(initInfo.nwnx_path)
+	logFile, err := os.OpenFile(path.Join(nwnxHomePath_, "src.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return 0
 	}
@@ -397,7 +399,7 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	log.Info(description)
 
 	// Get YAML file with services
-	configFile, err2 := ioutil.ReadFile(path.Join(nwnxHomePath_, "xp_rpc.yml"))
+	configFile, err2 := ioutil.ReadFile(path.Join(nwnxHomePath_, "src.yml"))
 	if err2 != nil {
 		log.Error(err2)
 
@@ -429,13 +431,7 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 }
 
 //export NWNXCPlugin_Delete
-func NWNXCPlugin_Delete(ptr uintptr) C.char {
-	if ptr == 0 {
-		return 0
-	}
-
-	return 1 // Don't do a thing; picked up in garbage collection
-}
+func NWNXCPlugin_Delete(_ uintptr) {}
 
 //export NWNXCPlugin_GetInt
 func NWNXCPlugin_GetInt(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int) C.int {
@@ -456,8 +452,6 @@ func NWNXCPlugin_GetFloat(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int) 
 func NWNXCPlugin_SetFloat(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
 	plugin.setFloat(sFunction, sParam1, nParam2, fValue)
 }
-
-// TODO: I don't like how this works; it requires you to use a buffer string to return a value, but I must concede
 
 //export NWNXCPlugin_GetString
 func NWNXCPlugin_GetString(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, result *C.char, resultSize C.size_t) {
