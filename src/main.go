@@ -38,7 +38,7 @@ import (
 )
 
 const pluginName string = "NWNX RPC Plugin" // Plugin name passed to hook
-const pluginVersion string = "0.2.6"        // Plugin version passed to hook
+const pluginVersion string = "0.2.7"        // Plugin version passed to hook
 const pluginID string = "RPC"               // Plugin ID used for identification in the list
 
 // YAML configuration for src
