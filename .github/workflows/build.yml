@@ -33,7 +33,7 @@ jobs:
           CC: i686-w64-mingw32-gcc
           CXX: i686-w64-mingw32-g++
         working-directory: src
-        run: go build -ldflags '-s -w' -o ../dist/src.dll -buildmode=c-shared
+        run: go build -ldflags '-s -w' -o ../dist/xp_rpc.dll -buildmode=c-shared
 
       - name: Copy all necessary files into distribution
         shell: bash
