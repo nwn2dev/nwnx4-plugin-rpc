@@ -1,8 +1,8 @@
 syntax = 'proto3';
 
-import "include/types.proto";
+import "nwscript/types.proto";
 
-option go_package = "src/proto/include";
+option go_package = "src/proto/nwscript";
 
 package NWNX4.RPC.Proto.NWScript;
 

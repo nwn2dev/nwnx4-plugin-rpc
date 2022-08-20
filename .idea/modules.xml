@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/nwnx4-plugins-xp_rpc.iml" filepath="$PROJECT_DIR$/.idea/nwnx4-plugins-xp_rpc.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/nwnx4-plugin-rpc.iml" filepath="$PROJECT_DIR$/.idea/nwnx4-plugin-rpc.iml" />
     </modules>
   </component>
 </project>

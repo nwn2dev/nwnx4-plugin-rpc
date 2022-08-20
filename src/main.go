@@ -31,6 +31,7 @@ import (
 	"path"
 	"reflect"
 	"time"
+	"unsafe"
 
 	// Protobuf
 	pbCore "nwnx4.org/src/proto"
@@ -38,7 +39,7 @@ import (
 )
 
 const pluginName string = "NWNX RPC Plugin" // Plugin name passed to hook
-const pluginVersion string = "0.2.7"        // Plugin version passed to hook
+const pluginVersion string = "0.2.8"        // Plugin version passed to hook
 const pluginID string = "RPC"               // Plugin ID used for identification in the list
 
 // YAML configuration for src
@@ -55,13 +56,15 @@ type ServerConfig struct {
 
 // YAML server services configuration for src
 type ServerServicesConfig struct {
-	Logger bool
+	Logger           bool
+	ScorcoClientName string
 }
 
 // Core plugin class; singleton per DLL
 type rpcPlugin struct {
-	rpcServer  *rpcServer
-	rpcClients map[string]rpcClient
+	rpcServer        *rpcServer
+	rpcClients       map[string]rpcClient
+	scorcoClientName string
 }
 
 // initRpcServer initializes the RPC server
@@ -118,6 +121,7 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 		name:                 name,
 		url:                  url,
 		nwnxServiceClient:    pbNWScript.NewNWNXServiceClient(conn),
+		scorcoServiceClient:  pbCore.NewSCORCOServiceClient(conn),
 		messageServiceClient: pbCore.NewMessageServiceClient(conn),
 	}
 
@@ -294,6 +298,72 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 	}
 }
 
+func (p *rpcPlugin) getGffSize(sVarName *C.char) C.size_t {
+	sVarName_ := C.GoString(sVarName)
+	client, ok := p.getRpcClient(p.scorcoClientName)
+	if !ok {
+		return 0
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	request := pbCore.SCORCOGetGFFSizeRequest{
+		SVarName: sVarName_,
+	}
+	response, err := client.scorcoServiceClient.SCORCOGetGFFSize(ctx, &request)
+	if err != nil {
+		log.Error(fmt.Sprintf("Call to GetGFFSize returned error: %s; %s",
+			err, request.SVarName))
+
+		return 0
+	}
+
+	return C.size_t(response.Size)
+}
+
+func (p *rpcPlugin) getGff(sVarName *C.char, result *C.uint8_t, resultSize C.size_t) {
+	sVarName_ := C.GoString(sVarName)
+	client, ok := p.getRpcClient(p.scorcoClientName)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	request := pbCore.SCORCOGetGFFRequest{
+		SVarName: sVarName_,
+	}
+	response, err := client.scorcoServiceClient.SCORCOGetGFF(ctx, &request)
+	if err != nil {
+		log.Error(fmt.Sprintf("Call to GetGFF returned error: %s; %s",
+			err, request.SVarName))
+
+		return
+	}
+
+	C.memcpy(unsafe.Pointer(result), unsafe.Pointer(&response.GffData[0]), resultSize)
+}
+
+func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, _ C.size_t) {
+	sVarName_ := C.GoString(sVarName)
+	gffData_ := *(*[]byte)(unsafe.Pointer(gffData))
+	client, ok := p.getRpcClient(p.scorcoClientName)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	var request = pbCore.SCORCOSetGFFRequest{
+		SVarName: sVarName_,
+		GffData:  gffData_,
+	}
+	if _, err := client.scorcoServiceClient.SCORCOSetGFF(ctx, &request); err != nil {
+		log.Error(fmt.Sprintf("Call to SetGFF returned error: %s; %s",
+			err, request.SVarName))
+	}
+}
+
 // rpcServer contains the interfaces to the RPC server
 type rpcServer struct {
 	pbCore.UnimplementedLogServiceServer
@@ -346,14 +416,16 @@ type rpcClient struct {
 	name                 string
 	url                  string
 	nwnxServiceClient    pbNWScript.NWNXServiceClient
+	scorcoServiceClient  pbCore.SCORCOServiceClient
 	messageServiceClient pbCore.MessageServiceClient
 }
 
 // newRpcPlugin builds and returns a new RPC plugin
 func newRpcPlugin() *rpcPlugin {
 	return &rpcPlugin{
-		rpcServer:  nil,
-		rpcClients: make(map[string]rpcClient),
+		rpcServer:        nil,
+		rpcClients:       make(map[string]rpcClient),
+		scorcoClientName: "",
 	}
 }
 
@@ -417,6 +489,7 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 
 	// Initialize the server
 	plugin.initRpcServer(config.Server)
+	plugin.scorcoClientName = config.Server.Services.ScorcoClientName
 
 	// Build out the clients
 	for name, url := range config.Clients {
@@ -462,6 +535,21 @@ func NWNXCPlugin_GetString(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int,
 //export NWNXCPlugin_SetString
 func NWNXCPlugin_SetString(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
 	plugin.setString(sFunction, sParam1, nParam2, sValue)
+}
+
+//export NWNXCPlugin_GetGFFSize
+func NWNXCPlugin_GetGFFSize(_ *C.void, sVarName *C.char) C.size_t {
+	return plugin.getGffSize(sVarName)
+}
+
+//export NWNXCPlugin_GetGFF
+func NWNXCPlugin_GetGFF(_ *C.void, sVarName *C.char, result *C.uint8_t, resultSize C.size_t) {
+	plugin.getGff(sVarName, result, resultSize)
+}
+
+//export NWNXCPlugin_SetGFF
+func NWNXCPlugin_SetGFF(_ *C.void, sVarName *C.char, gffData *C.uint8_t, gffDataSize C.size_t) {
+	plugin.setGff(sVarName, gffData, gffDataSize)
 }
 
 func main() {}

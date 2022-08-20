@@ -108,7 +108,7 @@ Once you have installed your requirements, building your protobufs are easy. For
 bash CLI command will develop your Go files.
 
 ```bash
-protoc 
+protoc \
   --go_out=../some_go_project/proto \
   --go-grpc_out=./some_go_project/proto \ 
   --go_opt=paths=source_relative \
