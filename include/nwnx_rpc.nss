@@ -8,8 +8,15 @@ string RPCGetString(string client, string sParam1, int nParam2 = -1);
 /*
 Set an RPC int
 */
-void RPCSetInt(string client, string sParam1, int nValue, int nParam2 = -1) {
+void RPCSetInt(string client, string sParam1, int nValue, int nParam2 = 0) {
 	NWNXSetInt("RPC", client, sParam1, nParam2, nValue);
+}
+
+/*
+Set an RPC bool
+*/
+void RPCSetBool(string client, string sParam1, bool bValue, int nParam2 = 1) {
+	NWNXSetInt("RPC", client, sParam1, nParam2, bValue ? 1 : 0);
 }
 
 /*
@@ -29,8 +36,15 @@ void RPCSetString(string client, string sParam1, string sValue, int nParam2 = -1
 /*
 Get an RPC int response
 */
-int RPCGetInt(string client, string sParam1, int nParam2 = -1) {
+int RPCGetInt(string client, string sParam1, int nParam2 = 0) {
 	return NWNXGetInt("RPC", client, sParam1, nParam2);
+}
+
+/*
+Get an RPC bool response
+*/
+bool RPCGetBool(string client, string sParam1, int nParam2 = 1) {
+	return !(NWNXGetInt("RPC", client, sParam1, nParam2) == 0);
 }
 
 /*

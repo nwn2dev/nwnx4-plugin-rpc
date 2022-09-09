@@ -1,0 +1,27 @@
+syntax = 'proto3';
+
+option go_package = "src/proto";
+
+package NWNX4.RPC;
+
+service EventService {
+  rpc Send(SendRequest) returns (SendResponse);
+}
+
+message Value {
+  oneof value {
+    bool bValue = 1;
+    int32 nValue = 2;
+    float fValue = 3;
+    string sValue = 4;
+    bytes gffValue = 5;
+  }
+}
+
+message SendRequest {
+  map<string, Value> params = 1;
+}
+
+message SendResponse {
+  map<string, Value> data = 1;
+}

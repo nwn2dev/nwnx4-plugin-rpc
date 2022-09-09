@@ -1,6 +1,5 @@
 server:
-  url: localhost:8080  # Set the URL that other services can use to communicate back with xp_rpc
-  services:
-    logger: true  # Set to true to enable the logger service
+  log:
+    logLevel: info
 clients:
-#  hello: localhost:3000/hello
+  service: localhost:3000

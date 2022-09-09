@@ -8,10 +8,11 @@ package main
 
 typedef struct {
 	const char* dll_path;
-	const char* nwnx_path;
+	const char* nwnx_user_path;
 	const char* nwn2_install_path;
 	const char* nwn2_home_path;
 	const char* nwn2_module_path;
+	const char* nwnx_install_path;
 } CPluginInitInfo;
 */
 import "C"
@@ -22,89 +23,57 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	empty "google.golang.org/protobuf/types/known/emptypb"
-	wrappers "google.golang.org/protobuf/types/known/wrapperspb"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
-	"net"
+	pbCore "nwnx4.org/src/proto"
 	"os"
 	"path"
 	"reflect"
+	"strings"
 	"time"
 	"unsafe"
-
-	// Protobuf
-	pbCore "nwnx4.org/src/proto"
-	pbNWScript "nwnx4.org/src/proto/nwscript"
 )
 
 const pluginName string = "NWNX RPC Plugin" // Plugin name passed to hook
-const pluginVersion string = "0.2.8"        // Plugin version passed to hook
+const pluginVersion string = "0.3.0"        // Plugin version passed to hook
 const pluginID string = "RPC"               // Plugin ID used for identification in the list
 
-// YAML configuration for src
-type Config struct {
-	Server  *ServerConfig
-	Clients map[string]string
+type config struct {
+	server  *serverConfig
+	clients map[string]string
 }
 
-// YAML server configuration for src
-type ServerConfig struct {
-	Url      string
-	Services ServerServicesConfig
+type serverConfig struct {
+	log *serverLogConfig
 }
 
-// YAML server services configuration for src
-type ServerServicesConfig struct {
-	Logger           bool
-	ScorcoClientName string
+type serverLogConfig struct {
+	logLevel string
 }
 
-// Core plugin class; singleton per DLL
 type rpcPlugin struct {
-	rpcServer        *rpcServer
 	rpcClients       map[string]rpcClient
-	scorcoClientName string
+	currentClientKey string
 }
 
 // initRpcServer initializes the RPC server
 // Runs on an rpcPlugin and accepts a ServerConfig
-func (p *rpcPlugin) initRpcServer(serverConfig *ServerConfig) {
+func (p *rpcPlugin) initRpcServer(serverConfig *serverConfig) {
 	if serverConfig == nil {
 		log.Info("No server configuration; skipping")
 
 		return
 	}
 
-	// Build server
-	listen, err := net.Listen("tcp", serverConfig.Url)
-	if err != nil {
-		log.Error(fmt.Sprintf("Failed to listen at server URL: %v", err))
-
-		return
-	}
-
-	log.Info(fmt.Sprintf("Adding server: @%s", serverConfig.Url))
-	s := grpc.NewServer()
-	p.rpcServer = &rpcServer{}
-
-	// Setup logger (if toggled)
-	if serverConfig.Services.Logger {
-		log.Info("Adding logger service to server")
-		pbCore.RegisterLogServiceServer(s, p.rpcServer)
-	}
-
-	// Setup the server in an asynchronous goroutine
-	serve := func(s *grpc.Server, listen net.Listener) {
-		log.Info("Serving server")
-
-		if err := s.Serve(listen); err != nil {
-			log.Error(fmt.Sprintf("Could not serve server: @%s", serverConfig.Url))
+	if serverConfig.log != nil {
+		// Set the log level based on what was passed if it matches a level
+		for _, logLevel := range log.AllLevels {
+			if strings.EqualFold(logLevel.String(), serverConfig.log.logLevel) {
+				log.SetLevel(logLevel)
+				break
+			}
 		}
-
-		log.Info("Server is closed")
 	}
-	go serve(s, listen)
 }
 
 // addRpcClient adds an RPC client
@@ -118,11 +87,11 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 	}
 
 	p.rpcClients[name] = rpcClient{
-		name:                 name,
-		url:                  url,
-		nwnxServiceClient:    pbNWScript.NewNWNXServiceClient(conn),
-		scorcoServiceClient:  pbCore.NewSCORCOServiceClient(conn),
-		messageServiceClient: pbCore.NewMessageServiceClient(conn),
+		name:               name,
+		url:                url,
+		eventServiceClient: pbCore.NewEventServiceClient(conn),
+		sendRequest:        nil,
+		sendResponse:       nil,
 	}
 
 	log.Info(fmt.Sprintf("Established client connection and stubs: %s@%s", name, url))
@@ -150,22 +119,29 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
 		return 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-	request := pbNWScript.NWNXGetIntRequest{
-		SFunction: sFunction_,
-		SParam1:   sParam1_,
-		NParam2:   nParam2_,
+	if client.sendResponse == nil && !client.send() {
+		return 0
 	}
-	response, err := client.nwnxServiceClient.NWNXGetInt(ctx, &request)
-	if err != nil {
-		log.Error(fmt.Sprintf("Call to GetInt returned error: %s; %s, %s, %d",
-			err, request.SFunction, request.SParam1, request.NParam2))
+
+	value, exists := client.sendResponse.Data[sParam1_]
+	if !exists {
+		log.Error(fmt.Sprintf("Value not declared in response: %s", sParam1_))
 
 		return 0
 	}
 
-	return C.int(response.Value)
+	switch nParam2_ {
+	case 0:
+		return C.int(value.GetNValue())
+	case 1:
+		if value.GetBValue() {
+			return 1
+		}
+
+		return 0
+	}
+
+	return C.int(value.GetNValue())
 }
 
 // setInt the body of the NWNXSetInt() call
@@ -179,253 +155,198 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.i
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-	request := pbNWScript.NWNXSetIntRequest{
-		SFunction: sFunction_,
-		SParam1:   sParam1_,
-		NParam2:   nParam2_,
-		NValue:    nValue_,
+	if client.sendRequest == nil {
+		client.resetSend()
 	}
-	if _, err := client.nwnxServiceClient.NWNXSetInt(ctx, &request); err != nil {
-		log.Error(fmt.Sprintf("Call to SetInt returned error: %s; %s, %s, %d, %d",
-			err, request.SFunction, request.SParam1, request.NParam2, request.NValue))
+
+	switch nParam2_ {
+	case 0:
+		client.sendRequest.Params[sParam1_].Value = &pbCore.Value_NValue{NValue: nValue_}
+		break
+	case 1:
+		client.sendRequest.Params[sParam1_].Value = &pbCore.Value_BValue{BValue: nValue_ == 1}
+		break
 	}
 }
 
 // getFloat the body of the NWNXGetFloat() call
-func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, nParam2 C.int) C.float {
+func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, _ C.int) C.float {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
-	nParam2_ := int32(nParam2)
+	// nParam2_ := int32(nParam2)
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return 0.0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-	request := pbNWScript.NWNXGetFloatRequest{
-		SFunction: sFunction_,
-		SParam1:   sParam1_,
-		NParam2:   nParam2_,
-	}
-	response, err := client.nwnxServiceClient.NWNXGetFloat(ctx, &request)
-	if err != nil {
-		log.Error(fmt.Sprintf("Call to GetFloat returned error: %s; %s, %s, %d",
-			err, request.SFunction, request.SParam1, request.NParam2))
-
-		return 0.0
+	if client.sendResponse == nil && !client.send() {
+		return 0
 	}
 
-	return C.float(response.Value)
+	value, exists := client.sendResponse.Data[sParam1_]
+	if !exists {
+		log.Error(fmt.Sprintf("Value not declared in response: %s", sParam1_))
+
+		return 0
+	}
+
+	return C.float(value.GetFValue())
 }
 
-func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
+func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, _ C.int, fValue C.float) {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
-	nParam2_ := int32(nParam2)
+	// nParam2_ := int32(nParam2)
 	fValue_ := float32(fValue)
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-	request := pbNWScript.NWNXSetFloatRequest{
-		SFunction: sFunction_,
-		SParam1:   sParam1_,
-		NParam2:   nParam2_,
-		FValue:    fValue_,
+	if client.sendRequest == nil {
+		client.resetSend()
 	}
-	if _, err := client.nwnxServiceClient.NWNXSetFloat(ctx, &request); err != nil {
-		log.Error(fmt.Sprintf("Call to SetFloat returned error: %s; %s, %s, %d, %f",
-			err, request.SFunction, request.SParam1, request.NParam2, request.FValue))
-	}
+
+	client.sendRequest.Params[sParam1_].Value = &pbCore.Value_FValue{FValue: fValue_}
 }
 
 // getString the body of the NWNXGetString() call
-func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, nParam2 C.int) *C.char {
+func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, _ C.int) *C.char {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
-	nParam2_ := int32(nParam2)
+	// nParam2_ := int32(nParam2)
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return C.CString("")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-	request := pbNWScript.NWNXGetStringRequest{
-		SFunction: sFunction_,
-		SParam1:   sParam1_,
-		NParam2:   nParam2_,
+	if client.sendResponse == nil && !client.send() {
+		return C.CString("")
 	}
-	response, err := client.nwnxServiceClient.NWNXGetString(ctx, &request)
-	if err != nil {
-		log.Error(fmt.Sprintf("Call to GetString returned error: %s; %s, %s, %d",
-			err, request.SFunction, request.SParam1, request.NParam2))
+
+	value, exists := client.sendResponse.Data[sParam1_]
+	if !exists {
+		log.Error(fmt.Sprintf("Value not declared in response: %s", sParam1_))
 
 		return C.CString("")
 	}
 
-	return C.CString(response.Value)
+	return C.CString(value.GetSValue())
 }
 
 // setString the body of the NWNXSetString() call
-func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
+func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, _ C.int, sValue *C.char) {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
-	nParam2_ := int32(nParam2)
+	// nParam2_ := int32(nParam2)
 	sValue_ := C.GoString(sValue)
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-	request := pbNWScript.NWNXSetStringRequest{
-		SFunction: sFunction_,
-		SParam1:   sParam1_,
-		NParam2:   nParam2_,
-		SValue:    sValue_,
+	if client.sendRequest == nil {
+		client.resetSend()
 	}
-	if _, err := client.nwnxServiceClient.NWNXSetString(ctx, &request); err != nil {
-		log.Error(fmt.Sprintf("Call to SetString returned error: %s; %s, %s, %d, %s",
-			err, request.SFunction, request.SParam1, request.NParam2, request.SValue))
-	}
+
+	client.sendRequest.Params[sParam1_].Value = &pbCore.Value_SValue{SValue: sValue_}
 }
 
 func (p *rpcPlugin) getGffSize(sVarName *C.char) C.size_t {
 	sVarName_ := C.GoString(sVarName)
-	client, ok := p.getRpcClient(p.scorcoClientName)
+	client, ok := p.getRpcClient(p.currentClientKey)
 	if !ok {
 		return 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-	request := pbCore.SCORCOGetGFFSizeRequest{
-		SVarName: sVarName_,
+	if client.sendResponse == nil && !client.send() {
+		return 0
 	}
-	response, err := client.scorcoServiceClient.SCORCOGetGFFSize(ctx, &request)
-	if err != nil {
-		log.Error(fmt.Sprintf("Call to GetGFFSize returned error: %s; %s",
-			err, request.SVarName))
+
+	value, exists := client.sendResponse.Data[sVarName_]
+	if !exists {
+		log.Error(fmt.Sprintf("Value not declared in response: %s", sVarName_))
 
 		return 0
 	}
 
-	return C.size_t(response.Size)
+	return C.size_t(len(value.GetGffValue()))
 }
 
 func (p *rpcPlugin) getGff(sVarName *C.char, result *C.uint8_t, resultSize C.size_t) {
 	sVarName_ := C.GoString(sVarName)
-	client, ok := p.getRpcClient(p.scorcoClientName)
+	client, ok := p.getRpcClient(p.currentClientKey)
 	if !ok {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-	request := pbCore.SCORCOGetGFFRequest{
-		SVarName: sVarName_,
-	}
-	response, err := client.scorcoServiceClient.SCORCOGetGFF(ctx, &request)
-	if err != nil {
-		log.Error(fmt.Sprintf("Call to GetGFF returned error: %s; %s",
-			err, request.SVarName))
+	value, exists := client.sendResponse.Data[sVarName_]
+	if !exists {
+		log.Error(fmt.Sprintf("Value not declared in response: %s", sVarName_))
 
 		return
 	}
 
-	C.memcpy(unsafe.Pointer(result), unsafe.Pointer(&response.GffData[0]), resultSize)
+	gff := value.GetGffValue()
+	C.memcpy(unsafe.Pointer(result), unsafe.Pointer(&gff[0]), resultSize)
 }
 
 func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, _ C.size_t) {
 	sVarName_ := C.GoString(sVarName)
 	gffData_ := *(*[]byte)(unsafe.Pointer(gffData))
-	client, ok := p.getRpcClient(p.scorcoClientName)
+	client, ok := p.getRpcClient(p.currentClientKey)
 	if !ok {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-	var request = pbCore.SCORCOSetGFFRequest{
-		SVarName: sVarName_,
-		GffData:  gffData_,
+	if client.sendRequest == nil {
+		client.resetSend()
 	}
-	if _, err := client.scorcoServiceClient.SCORCOSetGFF(ctx, &request); err != nil {
-		log.Error(fmt.Sprintf("Call to SetGFF returned error: %s; %s",
-			err, request.SVarName))
-	}
-}
 
-// rpcServer contains the interfaces to the RPC server
-type rpcServer struct {
-	pbCore.UnimplementedLogServiceServer
-}
-
-// Trace is the method call equivalent on the logger
-func (s *rpcServer) Trace(_ context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
-	log.Trace(stringValue.Value)
-
-	return &empty.Empty{}, nil
-}
-
-// Debug is the method call equivalent on the logger
-func (s *rpcServer) Debug(_ context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
-	log.Debug(stringValue.Value)
-
-	return &empty.Empty{}, nil
-}
-
-// Info is the method call equivalent on the logger
-func (s *rpcServer) Info(_ context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
-	log.Info(stringValue.Value)
-
-	return &empty.Empty{}, nil
-}
-
-// Warn is the method call equivalent on the logger
-func (s *rpcServer) Warn(_ context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
-	log.Warn(stringValue.Value)
-
-	return &empty.Empty{}, nil
-}
-
-// Err is the method call equivalent on the logger
-func (s *rpcServer) Err(_ context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
-	log.Error(stringValue.Value)
-
-	return &empty.Empty{}, nil
-}
-
-// LogStr is the method call equivalent on the logger without a log level
-func (s *rpcServer) LogStr(_ context.Context, stringValue *wrappers.StringValue) (*empty.Empty, error) {
-	log.Printf(stringValue.Value)
-
-	return &empty.Empty{}, nil
+	client.sendRequest.Params[sVarName_].Value = &pbCore.Value_GffValue{GffValue: gffData_}
 }
 
 // rpcClient contains the clients to RPC microservices
 type rpcClient struct {
-	name                 string
-	url                  string
-	nwnxServiceClient    pbNWScript.NWNXServiceClient
-	scorcoServiceClient  pbCore.SCORCOServiceClient
-	messageServiceClient pbCore.MessageServiceClient
+	name               string
+	url                string
+	eventServiceClient pbCore.EventServiceClient
+	sendRequest        *pbCore.SendRequest
+	sendResponse       *pbCore.SendResponse
+}
+
+func (c *rpcClient) resetSend() {
+	c.sendRequest = &pbCore.SendRequest{}
+	c.sendResponse = nil
+	plugin.currentClientKey = c.name
+}
+
+func (c *rpcClient) send() bool {
+	if c.sendRequest == nil {
+		c.resetSend()
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	response, err := c.eventServiceClient.Send(ctx, c.sendRequest)
+
+	if err != nil {
+		log.Error(fmt.Sprintf("Error sending request: %s", err))
+
+		return false
+	}
+
+	c.sendRequest = nil
+	c.sendResponse = response
+
+	return true
 }
 
 // newRpcPlugin builds and returns a new RPC plugin
 func newRpcPlugin() *rpcPlugin {
 	return &rpcPlugin{
-		rpcServer:        nil,
-		rpcClients:       make(map[string]rpcClient),
-		scorcoClientName: "",
+		rpcClients: make(map[string]rpcClient),
 	}
 }
 
@@ -453,7 +374,7 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	plugin = newRpcPlugin()
 
 	// Setup the log file
-	nwnxHomePath_ := C.GoString(initInfo.nwnx_path)
+	nwnxHomePath_ := C.GoString(initInfo.nwnx_user_path)
 	logFile, err := os.OpenFile(path.Join(nwnxHomePath_, "src.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return 0
@@ -477,7 +398,7 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 
 		return 0
 	}
-	config := Config{}
+	config := config{}
 	err3 := yaml.Unmarshal(configFile, &config)
 	if err3 != nil {
 		log.Error(err3)
@@ -488,11 +409,10 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	log.Info("Processing configuration file")
 
 	// Initialize the server
-	plugin.initRpcServer(config.Server)
-	plugin.scorcoClientName = config.Server.Services.ScorcoClientName
+	plugin.initRpcServer(config.server)
 
 	// Build out the clients
-	for name, url := range config.Clients {
+	for name, url := range config.clients {
 		log.Info(fmt.Sprintf("Adding client %s@%s", name, url))
 		plugin.addRpcClient(name, url)
 	}
