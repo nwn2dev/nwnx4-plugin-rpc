@@ -52,8 +52,7 @@ type serverLogConfig struct {
 }
 
 type rpcPlugin struct {
-	rpcClients       map[string]rpcClient
-	currentClientKey string
+	rpcClients map[string]rpcClient
 }
 
 // initRpcServer initializes the RPC server
@@ -254,7 +253,15 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, _ C.int, sValue *C.cha
 
 func (p *rpcPlugin) getGffSize(sVarName *C.char) C.size_t {
 	sVarName_ := C.GoString(sVarName)
-	client, ok := p.getRpcClient(p.currentClientKey)
+	varNameSplits := strings.SplitN(sVarName_, "///", 2)
+	var clientKey string
+	if len(varNameSplits) == 2 {
+		clientKey = varNameSplits[0]
+		sVarName_ = varNameSplits[1]
+	} else {
+		return 0
+	}
+	client, ok := p.getRpcClient(clientKey)
 	if !ok {
 		return 0
 	}
@@ -275,8 +282,20 @@ func (p *rpcPlugin) getGffSize(sVarName *C.char) C.size_t {
 
 func (p *rpcPlugin) getGff(sVarName *C.char, result *C.uint8_t, resultSize C.size_t) {
 	sVarName_ := C.GoString(sVarName)
-	client, ok := p.getRpcClient(p.currentClientKey)
+	varNameSplits := strings.SplitN(sVarName_, "///", 2)
+	var clientKey string
+	if len(varNameSplits) == 2 {
+		clientKey = varNameSplits[0]
+		sVarName_ = varNameSplits[1]
+	} else {
+		return
+	}
+	client, ok := p.getRpcClient(clientKey)
 	if !ok {
+		return
+	}
+
+	if client.sendResponse == nil && !client.send() {
 		return
 	}
 
@@ -293,8 +312,16 @@ func (p *rpcPlugin) getGff(sVarName *C.char, result *C.uint8_t, resultSize C.siz
 
 func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, _ C.size_t) {
 	sVarName_ := C.GoString(sVarName)
+	varNameSplits := strings.SplitN(sVarName_, "///", 2)
+	var clientKey string
+	if len(varNameSplits) == 2 {
+		clientKey = varNameSplits[0]
+		sVarName_ = varNameSplits[1]
+	} else {
+		return
+	}
 	gffData_ := *(*[]byte)(unsafe.Pointer(gffData))
-	client, ok := p.getRpcClient(p.currentClientKey)
+	client, ok := p.getRpcClient(clientKey)
 	if !ok {
 		return
 	}
@@ -318,7 +345,6 @@ type rpcClient struct {
 func (c *rpcClient) resetSend() {
 	c.sendRequest = &pbCore.SendRequest{}
 	c.sendResponse = nil
-	plugin.currentClientKey = c.name
 }
 
 func (c *rpcClient) send() bool {
