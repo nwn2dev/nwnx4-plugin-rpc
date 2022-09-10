@@ -25,7 +25,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
-	pbCore "nwnx4.org/src/proto"
+	pb "nwnx4.org/src/proto"
 	"os"
 	"path"
 	"reflect"
@@ -35,8 +35,17 @@ import (
 )
 
 const pluginName string = "NWNX RPC Plugin" // Plugin name passed to hook
-const pluginVersion string = "0.3.0"        // Plugin version passed to hook
+const pluginVersion string = "0.3.1"        // Plugin version passed to hook
 const pluginID string = "RPC"               // Plugin ID used for identification in the list
+
+const (
+	rpcTypeInt = iota
+	rpcTypeBool
+	rpcTypeFloat
+	rpcTypeString
+)
+
+const rpcFileSeparator string = "///"
 
 type config struct {
 	server  *serverConfig
@@ -86,11 +95,11 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 	}
 
 	p.rpcClients[name] = rpcClient{
-		name:               name,
-		url:                url,
-		eventServiceClient: pbCore.NewEventServiceClient(conn),
-		sendRequest:        nil,
-		sendResponse:       nil,
+		name:              name,
+		url:               url,
+		callServiceClient: pb.NewCallServiceClient(conn),
+		callRequest:       nil,
+		callResponse:      nil,
 	}
 
 	log.Info(fmt.Sprintf("Established client connection and stubs: %s@%s", name, url))
@@ -118,11 +127,11 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
 		return 0
 	}
 
-	if client.sendResponse == nil && !client.send() {
+	if client.callResponse == nil && !client.send() {
 		return 0
 	}
 
-	value, exists := client.sendResponse.Data[sParam1_]
+	value, exists := client.callResponse.Data[sParam1_]
 	if !exists {
 		log.Warn(fmt.Sprintf("Value not declared in response: %s", sParam1_))
 
@@ -130,14 +139,15 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
 	}
 
 	switch nParam2_ {
-	case 0:
-		return C.int(value.GetNValue())
-	case 1:
+	case rpcTypeBool:
 		if value.GetBValue() {
 			return 1
 		}
 
 		return 0
+	case rpcTypeInt:
+	default:
+		return C.int(value.GetNValue())
 	}
 
 	return C.int(value.GetNValue())
@@ -154,16 +164,17 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.i
 		return
 	}
 
-	if client.sendRequest == nil {
-		client.resetSend()
+	if client.callRequest == nil {
+		client.resetCall()
 	}
 
 	switch nParam2_ {
-	case 0:
-		client.sendRequest.Params[sParam1_] = &pbCore.Value{Value: &pbCore.Value_NValue{NValue: nValue_}}
+	case rpcTypeBool:
+		client.callRequest.Params[sParam1_] = &pb.Value{Value: &pb.Value_BValue{BValue: !(nValue_ == 0)}}
 		break
-	case 1:
-		client.sendRequest.Params[sParam1_] = &pbCore.Value{Value: &pbCore.Value_BValue{BValue: !(nValue_ == 0)}}
+	case rpcTypeInt:
+	default:
+		client.callRequest.Params[sParam1_] = &pb.Value{Value: &pb.Value_NValue{NValue: nValue_}}
 		break
 	}
 }
@@ -172,17 +183,16 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.i
 func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, _ C.int) C.float {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
-	// nParam2_ := int32(nParam2)
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return 0.0
 	}
 
-	if client.sendResponse == nil && !client.send() {
+	if client.callResponse == nil && !client.send() {
 		return 0
 	}
 
-	value, exists := client.sendResponse.Data[sParam1_]
+	value, exists := client.callResponse.Data[sParam1_]
 	if !exists {
 		log.Warn(fmt.Sprintf("Value not declared in response: %s", sParam1_))
 
@@ -195,35 +205,33 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, _ C.int) C.float {
 func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, _ C.int, fValue C.float) {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
-	// nParam2_ := int32(nParam2)
 	fValue_ := float32(fValue)
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return
 	}
 
-	if client.sendRequest == nil {
-		client.resetSend()
+	if client.callRequest == nil {
+		client.resetCall()
 	}
 
-	client.sendRequest.Params[sParam1_] = &pbCore.Value{Value: &pbCore.Value_FValue{FValue: fValue_}}
+	client.callRequest.Params[sParam1_] = &pb.Value{Value: &pb.Value_FValue{FValue: fValue_}}
 }
 
 // getString the body of the NWNXGetString() call
 func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, _ C.int) *C.char {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
-	// nParam2_ := int32(nParam2)
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return C.CString("")
 	}
 
-	if client.sendResponse == nil && !client.send() {
+	if client.callResponse == nil && !client.send() {
 		return C.CString("")
 	}
 
-	value, exists := client.sendResponse.Data[sParam1_]
+	value, exists := client.callResponse.Data[sParam1_]
 	if !exists {
 		log.Warn(fmt.Sprintf("Value not declared in response: %s", sParam1_))
 
@@ -237,23 +245,22 @@ func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, _ C.int) *C.char {
 func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, _ C.int, sValue *C.char) {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
-	// nParam2_ := int32(nParam2)
 	sValue_ := C.GoString(sValue)
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return
 	}
 
-	if client.sendRequest == nil {
-		client.resetSend()
+	if client.callRequest == nil {
+		client.resetCall()
 	}
 
-	client.sendRequest.Params[sParam1_] = &pbCore.Value{Value: &pbCore.Value_SValue{SValue: sValue_}}
+	client.callRequest.Params[sParam1_] = &pb.Value{Value: &pb.Value_SValue{SValue: sValue_}}
 }
 
 func (p *rpcPlugin) getGffSize(sVarName *C.char) C.size_t {
 	sVarName_ := C.GoString(sVarName)
-	varNameSplits := strings.SplitN(sVarName_, "///", 2)
+	varNameSplits := strings.SplitN(sVarName_, rpcFileSeparator, 2)
 	var clientKey string
 	if len(varNameSplits) == 2 {
 		clientKey = varNameSplits[0]
@@ -266,11 +273,11 @@ func (p *rpcPlugin) getGffSize(sVarName *C.char) C.size_t {
 		return 0
 	}
 
-	if client.sendResponse == nil && !client.send() {
+	if client.callResponse == nil && !client.send() {
 		return 0
 	}
 
-	value, exists := client.sendResponse.Data[sVarName_]
+	value, exists := client.callResponse.Data[sVarName_]
 	if !exists {
 		log.Warn(fmt.Sprintf("Value not declared in response: %s", sVarName_))
 
@@ -282,7 +289,7 @@ func (p *rpcPlugin) getGffSize(sVarName *C.char) C.size_t {
 
 func (p *rpcPlugin) getGff(sVarName *C.char, result *C.uint8_t, resultSize C.size_t) {
 	sVarName_ := C.GoString(sVarName)
-	varNameSplits := strings.SplitN(sVarName_, "///", 2)
+	varNameSplits := strings.SplitN(sVarName_, rpcFileSeparator, 2)
 	var clientKey string
 	if len(varNameSplits) == 2 {
 		clientKey = varNameSplits[0]
@@ -295,11 +302,11 @@ func (p *rpcPlugin) getGff(sVarName *C.char, result *C.uint8_t, resultSize C.siz
 		return
 	}
 
-	if client.sendResponse == nil && !client.send() {
+	if client.callResponse == nil && !client.send() {
 		return
 	}
 
-	value, exists := client.sendResponse.Data[sVarName_]
+	value, exists := client.callResponse.Data[sVarName_]
 	if !exists {
 		log.Warn(fmt.Sprintf("Value not declared in response: %s", sVarName_))
 
@@ -312,7 +319,7 @@ func (p *rpcPlugin) getGff(sVarName *C.char, result *C.uint8_t, resultSize C.siz
 
 func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, _ C.size_t) {
 	sVarName_ := C.GoString(sVarName)
-	varNameSplits := strings.SplitN(sVarName_, "///", 2)
+	varNameSplits := strings.SplitN(sVarName_, rpcFileSeparator, 2)
 	var clientKey string
 	if len(varNameSplits) == 2 {
 		clientKey = varNameSplits[0]
@@ -326,36 +333,36 @@ func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, _ C.size_t) {
 		return
 	}
 
-	if client.sendRequest == nil {
-		client.resetSend()
+	if client.callRequest == nil {
+		client.resetCall()
 	}
 
-	client.sendRequest.Params[sVarName_] = &pbCore.Value{Value: &pbCore.Value_GffValue{GffValue: gffData_}}
+	client.callRequest.Params[sVarName_] = &pb.Value{Value: &pb.Value_GffValue{GffValue: gffData_}}
 }
 
 // rpcClient contains the clients to RPC microservices
 type rpcClient struct {
-	name               string
-	url                string
-	eventServiceClient pbCore.EventServiceClient
-	sendRequest        *pbCore.SendRequest
-	sendResponse       *pbCore.SendResponse
+	name              string
+	url               string
+	callServiceClient pb.CallServiceClient
+	callRequest       *pb.CallRequest
+	callResponse      *pb.CallResponse
 }
 
-func (c *rpcClient) resetSend() {
-	c.sendRequest = &pbCore.SendRequest{}
-	c.sendResponse = nil
+func (c *rpcClient) resetCall() {
+	c.callRequest = &pb.CallRequest{}
+	c.callResponse = nil
 }
 
 func (c *rpcClient) send() bool {
-	if c.sendRequest == nil {
-		c.resetSend()
+	if c.callRequest == nil {
+		c.resetCall()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	response, err := c.eventServiceClient.Send(ctx, c.sendRequest)
+	response, err := c.callServiceClient.Call(ctx, c.callRequest)
 
 	if err != nil {
 		log.Error(fmt.Sprintf("Error sending request: %s", err))
@@ -363,8 +370,8 @@ func (c *rpcClient) send() bool {
 		return false
 	}
 
-	c.sendRequest = nil
-	c.sendResponse = response
+	c.callRequest = nil
+	c.callResponse = response
 
 	return true
 }

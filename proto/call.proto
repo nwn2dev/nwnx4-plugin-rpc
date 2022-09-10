@@ -4,8 +4,8 @@ option go_package = "src/proto";
 
 package NWNX4.RPC;
 
-service EventService {
-  rpc Send(SendRequest) returns (SendResponse);
+service CallService {
+  rpc Call(CallRequest) returns (CallResponse);
 }
 
 message Value {
@@ -18,10 +18,10 @@ message Value {
   }
 }
 
-message SendRequest {
+message CallRequest {
   map<string, Value> params = 1;
 }
 
-message SendResponse {
+message CallResponse {
   map<string, Value> data = 1;
 }

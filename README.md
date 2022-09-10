@@ -18,7 +18,7 @@ plugins to anything that can be developed into a C library, but still targeting 
 Plugins were further designed with a domain-oriented approach (i.e. data, health, system). The xp_rpc plugin
 potentially allows a more service-oriented approach. All domains (authentication, data, etc.) can now exist inside a
 scalable, distributable, performant microservice running on practically any environment fully (or partially) decoupled
-from the server itself.
+from the host itself.
 
 ## gRPC
 
@@ -39,16 +39,23 @@ All that will be left is to send requests through the module using NWScript.
 ## Use
 
 1. Include the `include/nwnx_rpc.nss` file into your module.
-2. All 6 base NWNX* functions are available. The final parameter is optional (nParam2) and defaults to -1.
+2. All 6 base NWNX* functions including the 2 RCO/SCO functions are available for use.
 
-```
-RPCSetInt("clientName", "intName", 255);
-RPCSetFloat("clientName", "floatName", 1.335);
-RPCSetString("clientName", "stringName", "Hello, world!");
+```NWScript
+int RPCGetInt(string sClient, string sParam1);
+void RPCSetInt(string sClient, string sParam1, int nValue);
 
-RPCGetInt("clientName", "intName");
-RPCGetFloat("clientName", "floatName");
-RPCGetString("clientName", "stringName"); 
+bool RPCGetBool(string sClient, string sParam1);
+void RPCSetBool(string sClient, string sParam1, bool bValue);
+
+float RPCGetFloat(string sClient, string sParam1);
+void RPCSetFloat(string sClient, string sParam1, float fValue);
+
+string RPCGetString(string sClient, string sParam1);
+void RPCSetString(string sClient, string sParam1, string sValue);
+
+object RPCRetrieveCampaignObject(string client, string sVarName, object oObject);
+int RPCStoreCampaignObject(string sClient, string sVarName, object oObject); 
 ```
 
 3. Build a microservice to handle the requests.
@@ -61,26 +68,24 @@ clientName" is the unique identifier to the microservice. What follows is a YAML
 
 ```yaml
 server:
-  url: localhost:8080
-  services:
-    logger: true
+  log:
+    logLevel: debug
 clients:
-  clientName: localhost:3000/clientName
+  clientName: localhost:3000
 ```
 
-| Setting                | Description                                                              |
-|------------------------|--------------------------------------------------------------------------|
-| server:url             | Set the URL that other services can use to communicate back with xp_rpc. |
-| server:services:logger | # Set to true to enable the logger service.                              |
-| clients[key]           | Key is the client name; the value is the URL route to the service.       |
+| Setting              | Description                                                                                          |
+|----------------------|------------------------------------------------------------------------------------------------------|
+| server:log:logLevel  | A string representation of the log level you wish to use (default: info)                             |
+| clients[key]         | Key is the client name and how you call it through NWN 2; the value is the URL route to the service. |
 
 ## Microservices
 
-Microservices are the real power behind this plugin. They can be developed in any architecture and many languages. 
+Microservices are the real power behind this plugin. They can be developed in any architecture and many languages.
 
-### Building your Microservice 
+### Building your Microservice
 
-Official support for all the gRPC programming languages can be found [here](https://grpc.io/docs/#official-support). 
+Official support for all the gRPC programming languages can be found [here](https://grpc.io/docs/#official-support).
 
 #### Requirements
 
@@ -88,17 +93,17 @@ Each language requires both the following, so you can compile the protobufs for 
 
 * [Protocol Buffers](https://developers.google.com/protocol-buffers/docs/downloads)
 * gRPC (per language):
-  * [C#](https://grpc.io/docs/languages/csharp/)
-  * [C++](https://grpc.io/docs/languages/cpp/)
-  * [Dart](https://grpc.io/docs/languages/dart/)
-  * [Go](https://grpc.io/docs/languages/go/)
-  * [Java](https://grpc.io/docs/languages/java/)
-  * [Kotlin](https://grpc.io/docs/languages/kotlin/)
-  * [Node](https://grpc.io/docs/languages/node/)
-  * [Objective-C](https://grpc.io/docs/languages/objective-c/https://grpc.io/docs/languages/objective-c/)
-  * [PHP](https://grpc.io/docs/languages/php/)
-  * [Python](https://grpc.io/docs/languages/python/)
-  * [Ruby](https://grpc.io/docs/languages/ruby/)
+    * [C#](https://grpc.io/docs/languages/csharp/)
+    * [C++](https://grpc.io/docs/languages/cpp/)
+    * [Dart](https://grpc.io/docs/languages/dart/)
+    * [Go](https://grpc.io/docs/languages/go/)
+    * [Java](https://grpc.io/docs/languages/java/)
+    * [Kotlin](https://grpc.io/docs/languages/kotlin/)
+    * [Node](https://grpc.io/docs/languages/node/)
+    * [Objective-C](https://grpc.io/docs/languages/objective-c/https://grpc.io/docs/languages/objective-c/)
+    * [PHP](https://grpc.io/docs/languages/php/)
+    * [Python](https://grpc.io/docs/languages/python/)
+    * [Ruby](https://grpc.io/docs/languages/ruby/)
 
 Some other languages are unofficially supported. They are available, but require more setup.
 
@@ -108,41 +113,47 @@ Once you have installed your requirements, building your protobufs are easy. For
 bash CLI command will develop your Go files.
 
 ```bash
-protoc \
-  --go_out=../some_go_project/proto \
-  --go-grpc_out=./some_go_project/proto \ 
-  --go_opt=paths=source_relative \
-  --go-grpc_opt=paths=source_relative \
-  -Iproto $(find proto -iname "*.proto")
+protoc 
+  --proto_path=proto proto/*.proto 
+  --go_out=../some_go_project/proto 
+  --go-grpc_out=../some_go_project/proto
 ```
 
 Replace go_ with the language you wish to use (java_, cpp_, etc.) and the *_out value with the location you wish to
-place your built files. 
+place your built files.
 
 From your project folder for your microservice, include your files into your application and create a service using the
 documentation mentioned above. For our example, we would build a service like so:
 
 ```go
 type rpcServer struct {
-	pbCore.UnimplementedEventServiceServer
+    pb.UnimplementedCallServiceServer
 }
 
-func (s *rpcServer) Send(ctx context.Context, in *pbCore.SendRequest) (*pbCore.SendResponse, error) {
-	...
+func (s *rpcServer) Call(ctx context.Context, in *pb.CallRequest) (*pb.CallResponse, error) {
+    ...
 }
 ```
 
-The SendRequest is a combination of all set values before the request. The SendResponse is the return as a mapped set
-of values of the response. Either request or response can have the following data types:
+*pb* is an alias for the protobuf package. You can name this whatever makes sense to you.
 
-* bool: bValue
-* int: nValue
-* float: fValue
-* string: sValue
-* []bytes: gffValue
+The CallRequest contains all parameters provided with a key set through the 4 set functions listed above. This can be as
+many parameters as you want and how complex you want.
 
-Notice that I use pbCore. They are the core Protocol Buffer protobufs with an alias.
+The CallResponse contains all values returned with a key set through the 4 get functions listed above. This can be as
+many values as you want and how complex you want.
 
-Then fill out the rest of your application by following the tutorials on the gRPC site.
+Any of the following types are available either on the request or the response.
+
+* Boolean
+* Integer (32-bit)
+* Float (32-bit)
+* String (ASCII)
+* GFF File (in bytes)
+
+You might be wondering, then how do I tell it to send a request to my microservice? In other words, how do I call a
+remote procedure? Easy. Set functions setup a request (if not set);
+get functions send the call and return the result. Once you set variables on the client again, you reset the process.
+It's quite simple, but quite powerful.
 
 Happy coding!
