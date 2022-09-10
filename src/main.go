@@ -401,7 +401,7 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 
 	// Setup the log file
 	nwnxHomePath_ := C.GoString(initInfo.nwnx_user_path)
-	logFile, err := os.OpenFile(path.Join(nwnxHomePath_, "src.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	logFile, err := os.OpenFile(path.Join(nwnxHomePath_, "xp_rpc.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return 0
 	}
