@@ -123,37 +123,25 @@ From your project folder for your microservice, include your files into your app
 documentation mentioned above. For our example, we would build a service like so:
 
 ```go
-type clientServer struct {
-	pbCore.UnimplementedMessageServiceServer
+type rpcServer struct {
+	pbCore.UnimplementedEventServiceServer
 }
 
-func (s *clientServer) NWNXSetInt(ctx context.Context, in *pbNWScript.NWNXSetIntRequest) (*empty.Empty, error) {
-	...
-}
-
-func (s *clientServer) NWNXSetFloat(ctx context.Context, in *pbNWScript.NWNXSetFloatRequest) (*empty.Empty, error) {
-	...
-}
-
-func (s *clientServer) NWNXSetString(ctx context.Context, in *pbNWScript.NWNXSetStringRequest) (*empty.Empty, error) {
-	...
-}
-
-func (s *clientServer) NWNXGetInt(ctx context.Context, in *pbNWScript.NWNXGetIntRequest) (*pbNWScript.Int, error) {
-	...
-}
-
-func (s *clientServer) NWNXGetFloat(ctx context.Context, in *pbNWScript.NWNXGetFloatRequest) (*pbNWScript.Float, error) {
-	...
-}
-
-func (s *clientServer) NWNXGetString(ctx context.Context, in *pbNWScript.NWNXGetStringRequest) (*pbNWScript.String, error) {
+func (s *rpcServer) Send(ctx context.Context, in *pbCore.SendRequest) (*pbCore.SendResponse, error) {
 	...
 }
 ```
 
-Notice that I use pbNWScript, pbCore, and empty aliases. They are the aliases for the NWScript protobufs, the core
-Protocol Buffer protobufs, and the Protocol Buffer empty protobuf.
+The SendRequest is a combination of all set values before the request. The SendResponse is the return as a mapped set
+of values of the response. Either request or response can have the following data types:
+
+* bool: bValue
+* int: nValue
+* float: fValue
+* string: sValue
+* []bytes: gffValue
+
+Notice that I use pbCore. They are the core Protocol Buffer protobufs with an alias.
 
 Then fill out the rest of your application by following the tutorials on the gRPC site.
 
