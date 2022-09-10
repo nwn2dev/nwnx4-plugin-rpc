@@ -124,7 +124,7 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
 
 	value, exists := client.sendResponse.Data[sParam1_]
 	if !exists {
-		log.Error(fmt.Sprintf("Value not declared in response: %s", sParam1_))
+		log.Warn(fmt.Sprintf("Value not declared in response: %s", sParam1_))
 
 		return 0
 	}
@@ -160,10 +160,10 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.i
 
 	switch nParam2_ {
 	case 0:
-		client.sendRequest.Params[sParam1_].Value = &pbCore.Value_NValue{NValue: nValue_}
+		client.sendRequest.Params[sParam1_] = &pbCore.Value{Value: &pbCore.Value_NValue{NValue: nValue_}}
 		break
 	case 1:
-		client.sendRequest.Params[sParam1_].Value = &pbCore.Value_BValue{BValue: nValue_ == 1}
+		client.sendRequest.Params[sParam1_] = &pbCore.Value{Value: &pbCore.Value_BValue{BValue: !(nValue_ == 0)}}
 		break
 	}
 }
@@ -184,7 +184,7 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, _ C.int) C.float {
 
 	value, exists := client.sendResponse.Data[sParam1_]
 	if !exists {
-		log.Error(fmt.Sprintf("Value not declared in response: %s", sParam1_))
+		log.Warn(fmt.Sprintf("Value not declared in response: %s", sParam1_))
 
 		return 0
 	}
@@ -206,7 +206,7 @@ func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, _ C.int, fValue C.float
 		client.resetSend()
 	}
 
-	client.sendRequest.Params[sParam1_].Value = &pbCore.Value_FValue{FValue: fValue_}
+	client.sendRequest.Params[sParam1_] = &pbCore.Value{Value: &pbCore.Value_FValue{FValue: fValue_}}
 }
 
 // getString the body of the NWNXGetString() call
@@ -225,7 +225,7 @@ func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, _ C.int) *C.char {
 
 	value, exists := client.sendResponse.Data[sParam1_]
 	if !exists {
-		log.Error(fmt.Sprintf("Value not declared in response: %s", sParam1_))
+		log.Warn(fmt.Sprintf("Value not declared in response: %s", sParam1_))
 
 		return C.CString("")
 	}
@@ -248,7 +248,7 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, _ C.int, sValue *C.cha
 		client.resetSend()
 	}
 
-	client.sendRequest.Params[sParam1_].Value = &pbCore.Value_SValue{SValue: sValue_}
+	client.sendRequest.Params[sParam1_] = &pbCore.Value{Value: &pbCore.Value_SValue{SValue: sValue_}}
 }
 
 func (p *rpcPlugin) getGffSize(sVarName *C.char) C.size_t {
@@ -272,7 +272,7 @@ func (p *rpcPlugin) getGffSize(sVarName *C.char) C.size_t {
 
 	value, exists := client.sendResponse.Data[sVarName_]
 	if !exists {
-		log.Error(fmt.Sprintf("Value not declared in response: %s", sVarName_))
+		log.Warn(fmt.Sprintf("Value not declared in response: %s", sVarName_))
 
 		return 0
 	}
@@ -301,7 +301,7 @@ func (p *rpcPlugin) getGff(sVarName *C.char, result *C.uint8_t, resultSize C.siz
 
 	value, exists := client.sendResponse.Data[sVarName_]
 	if !exists {
-		log.Error(fmt.Sprintf("Value not declared in response: %s", sVarName_))
+		log.Warn(fmt.Sprintf("Value not declared in response: %s", sVarName_))
 
 		return
 	}
@@ -330,7 +330,7 @@ func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, _ C.size_t) {
 		client.resetSend()
 	}
 
-	client.sendRequest.Params[sVarName_].Value = &pbCore.Value_GffValue{GffValue: gffData_}
+	client.sendRequest.Params[sVarName_] = &pbCore.Value{Value: &pbCore.Value_GffValue{GffValue: gffData_}}
 }
 
 // rpcClient contains the clients to RPC microservices
