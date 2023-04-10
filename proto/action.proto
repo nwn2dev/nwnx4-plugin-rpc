@@ -19,7 +19,7 @@ message Value {
 }
 
 message CallActionRequest {
-  string actionPath = 1;
+  string action = 1;
   map<string, Value> params = 2;
 }
 

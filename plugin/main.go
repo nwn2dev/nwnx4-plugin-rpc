@@ -439,15 +439,16 @@ type rpcClient struct {
 	config              *rpcConfig
 }
 
-func (c *rpcClient) resetCall() {
+func (c *rpcClient) resetCallAction() {
 	c.callActionRequest = &pb.CallActionRequest{}
 	c.callActionResponse = nil
 }
 
-func (c *rpcClient) callAction() bool {
+func (c *rpcClient) callAction(action string) bool {
 	if c.callActionRequest == nil {
-		c.resetCall()
+		c.resetCallAction()
 	}
+	c.callActionRequest.Action = action
 
 	ctx, cancel := context.WithTimeout(context.Background(), c.config.PerClient.getTimeout())
 	defer cancel()
