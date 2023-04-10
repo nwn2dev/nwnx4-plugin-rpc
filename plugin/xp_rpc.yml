@@ -1,6 +1,5 @@
-host:
-  log:
-    logLevel: info
+log:
+  logLevel: info
 clients:
   service: localhost:3000
 perClient:

@@ -28,6 +28,7 @@ import (
 	"os"
 	"path"
 	pb "proto"
+	"reflect"
 	"strings"
 	"time"
 	"unsafe"
@@ -48,7 +49,7 @@ const rpcGffVarNameSeparator = "/"
 )*/
 
 type rpcConfig struct {
-	host      *rpcHostConfig
+	log       *rpcLogConfig
 	clients   map[string]string
 	perClient *rpcPerClientConfig
 }
@@ -67,10 +68,6 @@ func (p *rpcPerClientConfig) getTimeout() time.Duration {
 	return time.Second * time.Duration(p.timeout)
 }
 
-type rpcHostConfig struct {
-	log *rpcLogConfig
-}
-
 type rpcLogConfig struct {
 	logLevel string
 }
@@ -80,19 +77,20 @@ type rpcPlugin struct {
 	clients map[string]rpcClient
 }
 
-// initRpcServer initializes the RPC server
+// init initializes the RPC server
 // Runs on an rpcPlugin and accepts a ServerConfig
-func (p *rpcPlugin) initRpcServer(hostConfig *rpcHostConfig) {
-	if hostConfig == nil {
-		log.Info("No server configuration; skipping")
+func (p *rpcPlugin) init() {
+	config := p.config
+	if config == nil {
+		log.Info("No configuration; skipping")
 
 		return
 	}
 
-	if hostConfig.log != nil {
+	if config.log != nil {
 		// Set the log level based on what was passed if it matches a level
 		for _, logLevel := range log.AllLevels {
-			if strings.EqualFold(logLevel.String(), hostConfig.log.logLevel) {
+			if strings.EqualFold(logLevel.String(), config.log.logLevel) {
 				log.SetLevel(logLevel)
 				break
 			}
@@ -138,9 +136,11 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 	// Handle invalid clients; try to recreate
 	if !rpcClient.isValid {
 		url := p.config.clients[name]
+		delay := p.config.perClient.getDelay()
 
 		// Invalid client; try to recreate
 		for i := 0; i < p.config.perClient.retries; i++ {
+			log.Info(fmt.Sprintf("Adding client: %s@%s", name, url))
 			p.addRpcClient(name, url)
 			rpcClient, exists = p.clients[name]
 
@@ -148,7 +148,8 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 				return &rpcClient, true
 			}
 
-			time.Sleep(p.config.perClient.getDelay())
+			log.Info(fmt.Sprintf("Adding client failed; delaying for %ds", p.config.perClient.getDelay()))
+			time.Sleep(delay)
 		}
 
 		log.Error(fmt.Sprintf("Client is still invalid; could not be setup: %s@#%s", name, url))
@@ -491,16 +492,16 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	log.Info(description)
 
 	// Get YAML file with services
-	configFile, err2 := ioutil.ReadFile(path.Join(nwnxHomePath_, "xp_rpc.yml"))
-	if err2 != nil {
-		log.Error(err2)
+	configFile, err := ioutil.ReadFile(path.Join(nwnxHomePath_, "xp_rpc.yml"))
+	if err != nil {
+		log.Error(err)
 
 		return 0
 	}
-	var config = plugin.config
-	err3 := yaml.Unmarshal(configFile, config)
-	if err3 != nil {
-		log.Error(err3)
+	config := plugin.config
+	err = yaml.Unmarshal(configFile, config)
+	if err != nil {
+		log.Error(err)
 
 		return 0
 	}
@@ -508,7 +509,7 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	log.Info("Processing configuration file")
 
 	// Initialize the server
-	plugin.initRpcServer(config.host)
+	plugin.init()
 
 	// Build out the clients
 	for name, url := range config.clients {
@@ -519,11 +520,11 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	log.Info("Initialized plugin")
 
 	// Giving back address
-	return C.uint32_t(uintptr(unsafe.Pointer(&plugin)))
+	return C.uint32_t(reflect.ValueOf(plugin).Pointer())
 }
 
 //export NWNXCPlugin_Delete
-func NWNXCPlugin_Delete(_ C.uint32_t) {}
+func NWNXCPlugin_Delete(_ *C.void) {}
 
 //export NWNXCPlugin_GetInt
 func NWNXCPlugin_GetInt(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int) C.int {
