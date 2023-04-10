@@ -49,27 +49,27 @@ const rpcGffVarNameSeparator = "/"
 )*/
 
 type rpcConfig struct {
-	log       *rpcLogConfig
-	clients   map[string]string
-	perClient *rpcPerClientConfig
-}
-
-type rpcPerClientConfig struct {
-	retries int
-	delay   int
-	timeout int
-}
-
-func (p *rpcPerClientConfig) getDelay() time.Duration {
-	return time.Second * time.Duration(p.delay)
-}
-
-func (p *rpcPerClientConfig) getTimeout() time.Duration {
-	return time.Second * time.Duration(p.timeout)
+	Log       *rpcLogConfig
+	Clients   map[string]string
+	PerClient *rpcPerClientConfig
 }
 
 type rpcLogConfig struct {
-	logLevel string
+	LogLevel string
+}
+
+type rpcPerClientConfig struct {
+	Retries int
+	Delay   int
+	Timeout int
+}
+
+func (p *rpcPerClientConfig) getDelay() time.Duration {
+	return time.Second * time.Duration(p.Delay)
+}
+
+func (p *rpcPerClientConfig) getTimeout() time.Duration {
+	return time.Second * time.Duration(p.Timeout)
 }
 
 type rpcPlugin struct {
@@ -87,10 +87,10 @@ func (p *rpcPlugin) init() {
 		return
 	}
 
-	if config.log != nil {
+	if config.Log != nil {
 		// Set the log level based on what was passed if it matches a level
 		for _, logLevel := range log.AllLevels {
-			if strings.EqualFold(logLevel.String(), config.log.logLevel) {
+			if strings.EqualFold(logLevel.String(), config.Log.LogLevel) {
 				log.SetLevel(logLevel)
 				break
 			}
@@ -105,19 +105,44 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 	if err != nil {
 		log.Error(fmt.Sprintf("Unable to attach client: @%s", url))
 
+		if client, found := p.clients[name]; found {
+			client.isValid = false
+		} else {
+			p.clients[name] = rpcClient{
+				isValid:             false,
+				name:                name,
+				url:                 url,
+				nwnxServiceClient:   nil,
+				scorcoServiceClient: nil,
+				actionServiceClient: nil,
+				callActionRequest:   nil,
+				callActionResponse:  nil,
+				config:              p.config,
+			}
+		}
+
 		return
 	}
 
-	p.clients[name] = rpcClient{
-		isValid:             true,
-		name:                name,
-		url:                 url,
-		nwnxServiceClient:   pb.NewNWNXServiceClient(conn),
-		scorcoServiceClient: pb.NewSCORCOServiceClient(conn),
-		actionServiceClient: pb.NewActionServiceClient(conn),
-		callActionRequest:   nil,
-		callActionResponse:  nil,
-		config:              p.config,
+	if client, found := p.clients[name]; found {
+		client.isValid = true
+		client.nwnxServiceClient = pb.NewNWNXServiceClient(conn)
+		client.scorcoServiceClient = pb.NewSCORCOServiceClient(conn)
+		client.actionServiceClient = pb.NewActionServiceClient(conn)
+		client.callActionRequest = nil
+		client.callActionResponse = nil
+	} else {
+		p.clients[name] = rpcClient{
+			isValid:             true,
+			name:                name,
+			url:                 url,
+			nwnxServiceClient:   pb.NewNWNXServiceClient(conn),
+			scorcoServiceClient: pb.NewSCORCOServiceClient(conn),
+			actionServiceClient: pb.NewActionServiceClient(conn),
+			callActionRequest:   nil,
+			callActionResponse:  nil,
+			config:              p.config,
+		}
 	}
 
 	log.Info(fmt.Sprintf("Established client connection and stubs: %s@%s", name, url))
@@ -135,20 +160,20 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 
 	// Handle invalid clients; try to recreate
 	if !rpcClient.isValid {
-		url := p.config.clients[name]
-		delay := p.config.perClient.getDelay()
+		url := p.config.Clients[name]
+		delay := p.config.PerClient.getDelay()
 
 		// Invalid client; try to recreate
-		for i := 0; i < p.config.perClient.retries; i++ {
+		for i := 0; i < p.config.PerClient.Retries; i++ {
 			log.Info(fmt.Sprintf("Adding client: %s@%s", name, url))
 			p.addRpcClient(name, url)
 			rpcClient, exists = p.clients[name]
 
-			if exists {
+			if exists && rpcClient.isValid {
 				return &rpcClient, true
 			}
 
-			log.Info(fmt.Sprintf("Adding client failed; delaying for %ds", p.config.perClient.getDelay()))
+			log.Info(fmt.Sprintf("Adding client failed; delaying for %ds", p.config.PerClient.getDelay()))
 			time.Sleep(delay)
 		}
 
@@ -168,7 +193,7 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
 		return 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.perClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
 	defer cancel()
 	request := pb.NWNXGetIntRequest{
 		SFunction: sFunction_,
@@ -198,7 +223,7 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.i
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.perClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
 	defer cancel()
 	request := pb.NWNXSetIntRequest{
 		SFunction: sFunction_,
@@ -223,7 +248,7 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, nParam2 C.int) C.float 
 		return 0.0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.perClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
 	defer cancel()
 	request := pb.NWNXGetFloatRequest{
 		SFunction: sFunction_,
@@ -252,7 +277,7 @@ func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.perClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
 	defer cancel()
 	request := pb.NWNXSetFloatRequest{
 		SFunction: sFunction_,
@@ -277,7 +302,7 @@ func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, nParam2 C.int) *C.char
 		return C.CString("")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.perClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
 	defer cancel()
 	request := pb.NWNXGetStringRequest{
 		SFunction: sFunction_,
@@ -307,7 +332,7 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.perClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
 	defer cancel()
 	request := pb.NWNXSetStringRequest{
 		SFunction: sFunction_,
@@ -330,7 +355,7 @@ func (p *rpcPlugin) getGffSize(sVarName *C.char) C.size_t {
 		return 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.perClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
 	defer cancel()
 	request := pb.SCORCOGetGFFSizeRequest{
 		SVarName: sVarName_,
@@ -355,7 +380,7 @@ func (p *rpcPlugin) getGff(sVarName *C.char, result *C.uint8_t, resultSize C.siz
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.perClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
 	defer cancel()
 	request := pb.SCORCOGetGFFRequest{
 		SVarName: sVarName_,
@@ -386,7 +411,7 @@ func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, gffDataSize C.s
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.perClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
 	defer cancel()
 	var request = pb.SCORCOSetGFFRequest{
 		SVarName:    sVarName_,
@@ -424,7 +449,7 @@ func (c *rpcClient) callAction() bool {
 		c.resetCall()
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), c.config.perClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), c.config.PerClient.getTimeout())
 	defer cancel()
 
 	response, err := c.actionServiceClient.CallAction(ctx, c.callActionRequest)
@@ -492,7 +517,8 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	log.Info(description)
 
 	// Get YAML file with services
-	configFile, err := ioutil.ReadFile(path.Join(nwnxHomePath_, "xp_rpc.yml"))
+	configFilepath := path.Join(nwnxHomePath_, "xp_rpc.yml")
+	configFile, err := ioutil.ReadFile(configFilepath)
 	if err != nil {
 		log.Error(err)
 
@@ -506,13 +532,13 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 		return 0
 	}
 
-	log.Info("Processing configuration file")
+	log.Info(fmt.Sprintf("Processing configuration file at %s", configFilepath))
 
 	// Initialize the server
 	plugin.init()
 
 	// Build out the clients
-	for name, url := range config.clients {
+	for name, url := range config.Clients {
 		log.Info(fmt.Sprintf("Adding client: %s@%s", name, url))
 		plugin.addRpcClient(name, url)
 	}
