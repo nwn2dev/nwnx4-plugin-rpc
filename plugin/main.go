@@ -38,15 +38,20 @@ const pluginName string = "NWNX RPC Plugin" // Plugin name passed to hook
 const pluginVersion string = "0.3.1"        // Plugin version passed to hook
 const pluginID string = "RPC"               // Plugin ID used for identification in the list
 
-const rpcGffVarNameSeparator = "/"
+const rpcGffVarNameSeparator = "///"
 
-/*const (
-	rpcValueTypeInt = iota
-	rpcValueTypeBool
-	rpcValueTypeFloat
-	rpcValueTypeString
-	rpcValueTypeGff
-)*/
+const rpcGetInt string = "RPC_GET_INT_"
+const rpcSetInt string = "RPC_SET_INT_"
+const rpcGetBool string = "RPC_GET_BOOL_"
+const rpcSetBool string = "RPC_SET_BOOL_"
+const rpcGetFloat string = "RPC_GET_FLOAT_"
+const rpcSetFloat string = "RPC_SET_FLOAT_"
+const rpcGetString string = "RPC_GET_STRING_"
+const rpcSetString string = "RPC_SET_STRING_"
+const rpcGetGff string = "RPC_GET_GFF_"
+const rpcSetGff string = "RPC_SET_GFF_"
+const rpcResetCallAction string = "RPC_RESET_CALL_ACTION_"
+const rpcCallAction string = "RPC_CALL_ACTION_"
 
 type rpcConfig struct {
 	Log       *rpcLogConfig
@@ -73,8 +78,10 @@ func (p *rpcPerClientConfig) getTimeout() time.Duration {
 }
 
 type rpcPlugin struct {
-	config  *rpcConfig
-	clients map[string]rpcClient
+	config                   *rpcConfig
+	clients                  map[string]rpcClient
+	globalCallActionRequest  *pb.CallActionRequest
+	globalCallActionResponse *pb.CallActionResponse
 }
 
 // init initializes the RPC server
@@ -115,8 +122,7 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 				nwnxServiceClient:   nil,
 				scorcoServiceClient: nil,
 				actionServiceClient: nil,
-				callActionRequest:   nil,
-				callActionResponse:  nil,
+				plugin:              p,
 				config:              p.config,
 			}
 		}
@@ -129,8 +135,6 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 		client.nwnxServiceClient = pb.NewNWNXServiceClient(conn)
 		client.scorcoServiceClient = pb.NewSCORCOServiceClient(conn)
 		client.actionServiceClient = pb.NewActionServiceClient(conn)
-		client.callActionRequest = nil
-		client.callActionResponse = nil
 	} else {
 		p.clients[name] = rpcClient{
 			isValid:             true,
@@ -139,8 +143,7 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 			nwnxServiceClient:   pb.NewNWNXServiceClient(conn),
 			scorcoServiceClient: pb.NewSCORCOServiceClient(conn),
 			actionServiceClient: pb.NewActionServiceClient(conn),
-			callActionRequest:   nil,
-			callActionResponse:  nil,
+			plugin:              p,
 			config:              p.config,
 		}
 	}
@@ -183,11 +186,42 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 	return &rpcClient, true
 }
 
+// resetCallAction reset the global "Call Action" request and response
+func (p *rpcPlugin) resetCallAction() {
+	p.globalCallActionRequest = &pb.CallActionRequest{
+		Action: "",
+		Params: make(map[string]*pb.Value),
+	}
+	p.globalCallActionResponse = &pb.CallActionResponse{
+		Data: make(map[string]*pb.Value),
+	}
+}
+
 // getInt the body of the NWNXGetInt() call
 func (p *rpcPlugin) getInt(sFunction, sParam1 *C.char, nParam2 C.int) C.int {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
+
+	// CallAction()
+	switch sFunction_ {
+	case rpcGetInt:
+		if v, found := p.globalCallActionResponse.Data[sParam1_]; found {
+			return C.int(v.GetNValue())
+		}
+
+		return 0
+	case rpcGetBool:
+		if v, found := p.globalCallActionResponse.Data[sParam1_]; found {
+			if v.GetBValue() {
+				return 1
+			}
+		}
+
+		return 0
+	}
+
+	// NWNXGetInt()
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return 0
@@ -218,6 +252,28 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.i
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
 	nValue_ := int32(nValue)
+
+	// CallAction()
+	switch sFunction_ {
+	case rpcSetInt:
+		p.globalCallActionRequest.Params[sParam1_] = &pb.Value{
+			ValueType: &pb.Value_NValue{
+				NValue: nValue_,
+			},
+		}
+
+		return
+	case rpcSetBool:
+		p.globalCallActionRequest.Params[sParam1_] = &pb.Value{
+			ValueType: &pb.Value_BValue{
+				BValue: nValue != 0,
+			},
+		}
+
+		return
+	}
+
+	// NWNXSetInt()
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return
@@ -243,6 +299,18 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, nParam2 C.int) C.float 
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
+
+	// CallAction()
+	switch sFunction_ {
+	case rpcGetFloat:
+		if v, found := p.globalCallActionResponse.Data[sParam1_]; found {
+			return C.float(v.GetFValue())
+		}
+
+		return 0.0
+	}
+
+	// NWNXGetFloat()
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return 0.0
@@ -267,11 +335,26 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, nParam2 C.int) C.float 
 	return C.float(response.Value)
 }
 
+// setFloat the body of the NWNXSetFloat() call
 func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
 	fValue_ := float32(fValue)
+
+	// CallAction()
+	switch sFunction_ {
+	case rpcSetFloat:
+		p.globalCallActionRequest.Params[sParam1_] = &pb.Value{
+			ValueType: &pb.Value_FValue{
+				FValue: fValue_,
+			},
+		}
+
+		return
+	}
+
+	// NWNXSetFloat()
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return
@@ -297,6 +380,18 @@ func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, nParam2 C.int) *C.char
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
+
+	// CallAction()
+	switch sFunction_ {
+	case rpcGetString:
+		if v, found := p.globalCallActionResponse.Data[sParam1_]; found {
+			return C.CString(v.GetSValue())
+		}
+
+		return C.CString("")
+	}
+
+	// NWNXGetString()
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return C.CString("")
@@ -327,6 +422,35 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
 	sValue_ := C.GoString(sValue)
+
+	// CallAction()
+	switch sFunction_ {
+	case rpcSetString:
+		p.globalCallActionRequest.Params[sParam1_] = &pb.Value{
+			ValueType: &pb.Value_SValue{
+				SValue: sValue_,
+			},
+		}
+
+		return
+	case rpcResetCallAction:
+		p.resetCallAction()
+
+		return
+	case rpcCallAction:
+		// sParam1_ holds the client identifier
+		client, ok := p.getRpcClient(sParam1_)
+		if !ok {
+			return
+		}
+
+		// sValue_ contains the action
+		client.callAction(sValue_)
+
+		return
+	}
+
+	// NWNXSetString()
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return
@@ -347,9 +471,25 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 	}
 }
 
+// getGffSize called at the start of RetrieveCampaignObject
 func (p *rpcPlugin) getGffSize(sVarName *C.char) C.size_t {
 	splits := strings.SplitN(C.GoString(sVarName), rpcGffVarNameSeparator, 2)
-	sVarName_, sFunction_ := splits[0], splits[1]
+	if len(splits) != 2 {
+		return 0
+	}
+	sFunction_, sVarName_ := splits[0], splits[1]
+
+	// CallAction()
+	switch sFunction_ {
+	case rpcGetGff:
+		if v, found := p.globalCallActionResponse.Data[sVarName_]; found {
+			return C.size_t(len(v.GetGffValue()))
+		}
+
+		return 0
+	}
+
+	// RetrieveCampaignObject()
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return 0
@@ -374,7 +514,23 @@ func (p *rpcPlugin) getGffSize(sVarName *C.char) C.size_t {
 
 func (p *rpcPlugin) getGff(sVarName *C.char, result *C.uint8_t, resultSize C.size_t) {
 	splits := strings.SplitN(C.GoString(sVarName), rpcGffVarNameSeparator, 2)
-	sVarName_, sFunction_ := splits[0], splits[1]
+	if len(splits) != 2 {
+		return
+	}
+	sFunction_, sVarName_ := splits[0], splits[1]
+
+	// CallAction()
+	switch sFunction_ {
+	case rpcGetGff:
+		if v, found := p.globalCallActionResponse.Data[sVarName_]; found {
+			// Do not need to free this memory; managed by the hook library
+			C.memcpy(unsafe.Pointer(result), unsafe.Pointer(&v.GetGffValue()[0]), resultSize)
+		}
+
+		return
+	}
+
+	// RetrieveCampaignObject()
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		return
@@ -403,7 +559,28 @@ func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, gffDataSize C.s
 	ptr := unsafe.Pointer(gffData)
 	gffData_ := (*[1 << 30]byte)(ptr)[:gffDataSize_:gffDataSize_]
 	splits := strings.SplitN(C.GoString(sVarName), rpcGffVarNameSeparator, 2)
-	sVarName_, sFunction_ := splits[0], splits[1]
+	if len(splits) != 2 {
+		return
+	}
+	sFunction_, sVarName_ := splits[0], splits[1]
+
+	// CallAction()
+	switch sFunction_ {
+	case rpcSetGff:
+		gffValue := make([]byte, gffDataSize_)
+		copy(gffValue, gffData_)
+
+		p.globalCallActionRequest.Params[sVarName_] = &pb.Value{
+			ValueType: &pb.Value_GffValue{
+				GffValue: gffValue,
+			},
+		}
+		C.free(ptr)
+
+		return
+	}
+
+	// StoreCampaignObject()
 	client, ok := p.getRpcClient(sFunction_)
 	if !ok {
 		C.free(ptr)
@@ -434,38 +611,29 @@ type rpcClient struct {
 	nwnxServiceClient   pb.NWNXServiceClient
 	scorcoServiceClient pb.SCORCOServiceClient
 	actionServiceClient pb.ActionServiceClient
-	callActionRequest   *pb.CallActionRequest
-	callActionResponse  *pb.CallActionResponse
+	plugin              *rpcPlugin
 	config              *rpcConfig
 }
 
-func (c *rpcClient) resetCallAction() {
-	c.callActionRequest = &pb.CallActionRequest{}
-	c.callActionResponse = nil
-}
-
-func (c *rpcClient) callAction(action string) bool {
-	if c.callActionRequest == nil {
-		c.resetCallAction()
-	}
-	c.callActionRequest.Action = action
+// callAction call an action on the client specified
+func (c *rpcClient) callAction(action string) {
+	c.plugin.globalCallActionRequest.Action = action
 
 	ctx, cancel := context.WithTimeout(context.Background(), c.config.PerClient.getTimeout())
 	defer cancel()
-
-	response, err := c.actionServiceClient.CallAction(ctx, c.callActionRequest)
+	response, err := c.actionServiceClient.CallAction(ctx, c.plugin.globalCallActionRequest)
+	c.plugin.resetCallAction()
 
 	if err != nil {
 		c.isValid = false
 		log.Error(fmt.Sprintf("Error sending request: %s", err))
 
-		return false
+		return
 	}
 
-	c.callActionRequest = nil
-	c.callActionResponse = response
+	c.plugin.globalCallActionResponse = response
 
-	return true
+	return
 }
 
 // newRpcPlugin builds and returns a new RPC plugin
@@ -473,6 +641,13 @@ func newRpcPlugin() *rpcPlugin {
 	return &rpcPlugin{
 		config:  &rpcConfig{},
 		clients: make(map[string]rpcClient),
+		globalCallActionRequest: &pb.CallActionRequest{
+			Action: "",
+			Params: make(map[string]*pb.Value),
+		},
+		globalCallActionResponse: &pb.CallActionResponse{
+			Data: make(map[string]*pb.Value),
+		},
 	}
 }
 
