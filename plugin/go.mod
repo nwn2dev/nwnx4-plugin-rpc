@@ -1,10 +1,6 @@
-module src
+module nwnx4.org/xp_rpc
 
 go 1.18
-
-replace nwnx4.org/plugin/proto => ./proto
-
-replace nwnx4.org/plugin/proto/nwscript => ./proto/nwscript
 
 require (
 	github.com/sirupsen/logrus v1.8.1

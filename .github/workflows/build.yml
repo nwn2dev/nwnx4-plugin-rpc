@@ -1,4 +1,4 @@
-name: NWNX4-plugins-src
+name: NWNX4-plugins-xp_rpc
 on: [push, pull_request]
 
 jobs:
