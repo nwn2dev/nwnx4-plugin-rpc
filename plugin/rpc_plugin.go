@@ -38,7 +38,7 @@ const rpcCallAction string = "RPC_CALL_ACTION_"
 
 type rpcPlugin struct {
 	config                   *rpcConfig
-	clients                  map[string]rpcClient
+	clients                  map[string]*rpcClient
 	globalCallActionRequest  *pb.CallActionRequest
 	globalCallActionResponse *pb.CallActionResponse
 }
@@ -47,7 +47,7 @@ type rpcPlugin struct {
 func newRpcPlugin(config *rpcConfig) *rpcPlugin {
 	plugin := &rpcPlugin{
 		config:                   config,
-		clients:                  make(map[string]rpcClient),
+		clients:                  make(map[string]*rpcClient),
 		globalCallActionRequest:  newCallActionRequest(),
 		globalCallActionResponse: newCallActionResponse(),
 	}
@@ -101,7 +101,7 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 	if err != nil {
 		log.Errorf("Unable to attach client: %s@%s", name, url)
 
-		p.clients[name] = rpcClient{
+		p.clients[name] = &rpcClient{
 			isValid:             false,
 			name:                name,
 			url:                 url,
@@ -113,7 +113,7 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 		return
 	}
 
-	p.clients[name] = rpcClient{
+	p.clients[name] = &rpcClient{
 		isValid:             true,
 		name:                name,
 		url:                 url,
@@ -148,7 +148,7 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 			rpcClient, exists = p.clients[name]
 
 			if exists && rpcClient.isValid {
-				return &rpcClient, true
+				return rpcClient, true
 			}
 
 			log.Infof("Adding client failed; delaying for %ds", p.config.PerClient.getDelay())
@@ -158,7 +158,7 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 		log.Errorf("Client is still invalid; could not be setup: %s@#%s", name, url)
 	}
 
-	return &rpcClient, true
+	return rpcClient, true
 }
 
 // getInt the body of the NWNXGetInt() call
