@@ -42,7 +42,7 @@ int RPCGetIntEx(string sParam1) {
 }
 
 void RPCSetIntEx(string sParam1, int nValue) {
-	NWNXSetInt(RPC_PLUGIN_ID, RPC_SET_INT, sParam1, nParam2, nValue);
+	NWNXSetInt(RPC_PLUGIN_ID, RPC_SET_INT, sParam1, -1, nValue);
 }
 
 int RPCGetBoolEx(string sParam1) {
@@ -70,7 +70,7 @@ void RPCSetStringEx(string sParam1, string sValue) {
 }
 
 object RPCRetrieveCampaignObjectEx(string sVarName) {
-	return RetrieveCampaignObject(RPC_PLUGIN_ID, RPC_GET_GFF + RPC_GFF_VAR_NAME_SEPARATOR + sVarName);
+	return RetrieveCampaignObject(RPC_PLUGIN_ID, RPC_GET_GFF + RPC_GFF_VAR_NAME_SEPARATOR + sVarName, GetStartingLocation());
 }
 
 
@@ -85,7 +85,7 @@ float RPCGetFloat(string sClient, string sParam1, int nParam2);
 void RPCSetFloat(string sClient, string sParam1, float fValue, int nParam2 = 0);
 string RPCGetString(string sClient, string sParam1, int nParam2 = 0);
 void RPCSetString(string sClient, string sParam1, string sValue, int nParam2 = 0);
-object RPCRetrieveCampaignObject(string client, string sVarName);
+object RPCRetrieveCampaignObject(string sClient, string sVarName);
 int RPCStoreCampaignObject(string sClient, string sVarName, object oObject);
 
 int RPCGetInt(string sClient, string sParam1, int nParam2 = 0) {
@@ -112,8 +112,8 @@ void RPCSetString(string sClient, string sParam1, string sValue, int nParam2 = 0
 	NWNXSetString(RPC_PLUGIN_ID, sClient, sParam1, nParam2, sValue);
 }
 
-object RPCRetrieveCampaignObject(string client, string sVarName) {
-	return RetrieveCampaignObject(RPC_PLUGIN_ID, sClient + RPC_GFF_VAR_NAME_SEPARATOR + sVarName);
+object RPCRetrieveCampaignObject(string sClient, string sVarName) {
+	return RetrieveCampaignObject(RPC_PLUGIN_ID, sClient + RPC_GFF_VAR_NAME_SEPARATOR + sVarName, GetStartingLocation());
 }
 
 int RPCStoreCampaignObject(string sClient, string sVarName, object oObject) {
