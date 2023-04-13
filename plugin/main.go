@@ -1,6 +1,7 @@
 package main
 
 /*
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -31,6 +32,10 @@ const pluginID string = "RPC"               // Plugin ID used for identification
 const pluginName string = "NWNX RPC Plugin" // Plugin name passed to hook
 const pluginDescription string = "A better way to integrate services with NWN2"
 const pluginVersion string = "0.3.1" // Plugin version passed to hook
+const pluginContact string = "(c) 2021-2023 by ihatemundays (scottmunday84@gmail.com)"
+
+const logFilename string = "xp_rpc.log"
+const configFilename string = "xp_rpc.yml"
 
 var plugin *rpcPlugin // Singleton
 
@@ -55,15 +60,13 @@ func NWNXCPlugin_GetInfo() *C.char {
 func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	// Setup the log file
 	nwnxHomePath_ := C.GoString(initInfo.nwnx_user_path)
-	logFile, err := os.OpenFile(path.Join(nwnxHomePath_, "xp_rpc.log"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	logFile, err := os.OpenFile(path.Join(nwnxHomePath_, logFilename), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return 0
 	}
 
 	// Adding the header/description to the log
-	header := fmt.Sprintf(
-		"%s v%s \n"+
-			"(c) 2021-2023 by ihatemundays (scottmunday84@gmail.com) \n", pluginName, pluginVersion)
+	header := fmt.Sprintf("%s v%s \n %s \n", pluginName, pluginVersion, pluginContact)
 	description := pluginDescription
 
 	log.SetFormatter(&log.JSONFormatter{})
@@ -72,7 +75,7 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	log.Info(description)
 
 	// Get YAML file with services
-	configFilepath := path.Join(nwnxHomePath_, "xp_rpc.yml")
+	configFilepath := path.Join(nwnxHomePath_, configFilename)
 	configFile, err := ioutil.ReadFile(configFilepath)
 	if err != nil {
 		log.Error(err)
@@ -119,8 +122,15 @@ func NWNXCPlugin_SetFloat(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, 
 
 //export NWNXCPlugin_GetString
 func NWNXCPlugin_GetString(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, result *C.char, resultSize C.size_t) {
-	response := plugin.getString(sFunction, sParam1, nParam2)
-	C.strncpy_s(result, resultSize, C.CString(response), C.size_t(len(response)))
+	response := C.CString(plugin.getString(sFunction, sParam1, nParam2))
+
+	// Get the pointer to the memory
+	responseSize := C.strlen(response)
+	responsePtr := unsafe.Pointer(response)
+	defer C.free(responsePtr)
+
+	// Copy the response over to the result
+	C.strncpy_s(result, resultSize, response, responseSize)
 }
 
 //export NWNXCPlugin_SetString
@@ -136,9 +146,24 @@ func NWNXCPlugin_GetGFFSize(_ *C.void, sVarName *C.char) C.size_t {
 //export NWNXCPlugin_GetGFF
 func NWNXCPlugin_GetGFF(_ *C.void, sVarName *C.char, result *C.uint8_t, resultSize C.size_t) {
 	response := plugin.getGff(sVarName, result, resultSize)
-	if response != nil {
-		C.memcpy(unsafe.Pointer(result), unsafe.Pointer(&response[0]), resultSize)
+	if response == nil {
+		log.Error("Response is null")
+
+		return
 	}
+
+	// Get the pointer to the memory
+	responseSize := C.size_t(len(response))
+	responsePtr := unsafe.Pointer(&response[0])
+	if resultSize < responseSize {
+		log.Errorf("%d response size is too large for the %d result size", uint32(responseSize), uint32(resultSize))
+
+		return
+	}
+
+	// Copy the response over to the result
+	resultPtr := unsafe.Pointer(result)
+	C.memcpy(resultPtr, responsePtr, responseSize)
 }
 
 //export NWNXCPlugin_SetGFF
