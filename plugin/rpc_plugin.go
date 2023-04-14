@@ -20,7 +20,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-const rpcGffVarNameSeparator = "///"
+const rpcGffVarNameSeparator = "!"
 
 const rpcGetInt string = "RPC_GET_INT_"
 const rpcSetInt string = "RPC_SET_INT_"

@@ -1,6 +1,6 @@
 const string RPC_PLUGIN_ID = "RPC";
 
-const string RPC_GFF_VAR_NAME_SEPARATOR = "///";
+const string RPC_GFF_VAR_NAME_SEPARATOR = "!";
 
 const string RPC_GET_INT = "RPC_GET_INT_";
 const string RPC_SET_INT = "RPC_SET_INT_";
@@ -70,12 +70,12 @@ void RPCSetStringEx(string sParam1, string sValue) {
 }
 
 object RPCRetrieveCampaignObjectEx(string sVarName) {
-	return RetrieveCampaignObject(RPC_PLUGIN_ID, RPC_GET_GFF + RPC_GFF_VAR_NAME_SEPARATOR + sVarName, GetStartingLocation());
+	return RetrieveCampaignObject("NWNX." + RPC_PLUGIN_ID, RPC_GET_GFF + RPC_GFF_VAR_NAME_SEPARATOR + sVarName, GetLocation(OBJECT_SELF));
 }
 
 
 int RPCStoreCampaignObjectEx(string sVarName, object oObject) {
-	return StoreCampaignObject(RPC_PLUGIN_ID, RPC_SET_GFF + RPC_GFF_VAR_NAME_SEPARATOR + sVarName, oObject);
+	return StoreCampaignObject("NWNX." + RPC_PLUGIN_ID, RPC_SET_GFF + RPC_GFF_VAR_NAME_SEPARATOR + sVarName, oObject);
 }
 
 // NWNX*
@@ -113,9 +113,9 @@ void RPCSetString(string sClient, string sParam1, string sValue, int nParam2 = 0
 }
 
 object RPCRetrieveCampaignObject(string sClient, string sVarName) {
-	return RetrieveCampaignObject(RPC_PLUGIN_ID, sClient + RPC_GFF_VAR_NAME_SEPARATOR + sVarName, GetStartingLocation());
+	return RetrieveCampaignObject("NWNX." + RPC_PLUGIN_ID, sClient + RPC_GFF_VAR_NAME_SEPARATOR + sVarName, GetLocation(OBJECT_SELF));
 }
 
 int RPCStoreCampaignObject(string sClient, string sVarName, object oObject) {
-	return StoreCampaignObject(RPC_PLUGIN_ID, sClient + RPC_GFF_VAR_NAME_SEPARATOR + sVarName, oObject);
+	return StoreCampaignObject("NWNX." + RPC_PLUGIN_ID, sClient + RPC_GFF_VAR_NAME_SEPARATOR + sVarName, oObject);
 }
