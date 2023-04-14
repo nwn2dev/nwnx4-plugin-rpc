@@ -36,7 +36,7 @@ const rpcResetCallAction string = "RPC_RESET_CALL_ACTION_"
 const rpcCallAction string = "RPC_CALL_ACTION_"
 
 type rpcPlugin struct {
-	config                   *rpcConfig
+	config                   rpcConfig
 	clients                  map[string]*rpcClient
 	globalCallActionRequest  *pb.CallActionRequest
 	globalCallActionResponse *pb.CallActionResponse
@@ -45,7 +45,7 @@ type rpcPlugin struct {
 // newRpcPlugin builds and returns a new RPC plugin
 func newRpcPlugin() *rpcPlugin {
 	return &rpcPlugin{
-		config:                   &rpcConfig{},
+		config:                   rpcConfig{},
 		clients:                  make(map[string]*rpcClient),
 		globalCallActionRequest:  newCallActionRequest(),
 		globalCallActionResponse: newCallActionResponse(),
@@ -65,20 +65,13 @@ func newCallActionResponse() *pb.CallActionResponse {
 	}
 }
 
-// init initializes the RPC server
-// Runs on an rpcPlugin and accepts a ServerConfig
-func (p *rpcPlugin) init(config *rpcConfig) {
+// init initializes the RPC plugin
+func (p *rpcPlugin) init() {
 	log.Info("Initializing RPC plugin")
-	if config == nil {
-		log.Error("Configuration is not set")
-
-		return
-	}
-	p.config = config
 
 	// Set the log level based on what was passed if it matches a level
 	for _, logLevel := range log.AllLevels {
-		if strings.EqualFold(logLevel.String(), config.Log.LogLevel) {
+		if strings.EqualFold(logLevel.String(), p.config.Log.LogLevel) {
 			log.Infof("Log level set as %s", logLevel)
 			log.SetLevel(logLevel)
 			break
@@ -86,8 +79,7 @@ func (p *rpcPlugin) init(config *rpcConfig) {
 	}
 
 	// Build out the clients
-	for name, url := range config.Clients {
-		log.Infof("Adding client: %s@%s", name, url)
+	for name, url := range p.config.Clients {
 		plugin.addRpcClient(name, url)
 	}
 
@@ -140,7 +132,7 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 	// Handle invalid clients; try to recreate
 	if !rpcClient.isValid {
 		url := p.config.Clients[name]
-		delay := p.config.PerClient.getDelay()
+		delay := p.config.getDelay()
 
 		// Invalid client; try to recreate
 		for i := 0; i < p.config.PerClient.Retries; i++ {
@@ -152,7 +144,7 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 				return rpcClient, true
 			}
 
-			log.Infof("Adding client failed; delaying for %ds", p.config.PerClient.getDelay())
+			log.Infof("Adding client failed; delaying for %ds", p.config.getDelay())
 			time.Sleep(delay)
 		}
 
@@ -193,7 +185,7 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 *C.char, nParam2 C.int) int32 {
 		return 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
 	defer cancel()
 	request := pb.NWNXGetIntRequest{
 		SFunction: sFunction_,
@@ -246,7 +238,7 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.i
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
 	defer cancel()
 	request := pb.NWNXSetIntRequest{
 		SFunction: sFunction_,
@@ -284,7 +276,7 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, nParam2 C.int) float32 
 		return 0.0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
 	defer cancel()
 	request := pb.NWNXGetFloatRequest{
 		SFunction: sFunction_,
@@ -329,7 +321,7 @@ func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
 	defer cancel()
 	request := pb.NWNXSetFloatRequest{
 		SFunction: sFunction_,
@@ -367,7 +359,7 @@ func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, nParam2 C.int) string 
 		return ""
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
 	defer cancel()
 	request := pb.NWNXGetStringRequest{
 		SFunction: sFunction_,
@@ -392,7 +384,7 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
 	sValue_ := C.GoString(sValue)
-	log.Debugf("NWNXSetString(%s, %s, %d, %d, %s)", sFunction_, sParam1_, nParam2_, sValue_)
+	log.Debugf("NWNXSetString(%s, %s, %d, %s)", sFunction_, sParam1_, nParam2_, sValue_)
 
 	// CallAction()
 	switch sFunction_ {
@@ -428,7 +420,7 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
 	defer cancel()
 	request := pb.NWNXSetStringRequest{
 		SFunction: sFunction_,
@@ -446,9 +438,9 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 // callAction call an action on the client specified
 func (p *rpcPlugin) callAction(client *rpcClient, action string) {
 	p.globalCallActionRequest.Action = action
-	log.Errorf("CallAction(): %s@%s, %+v", client.name, client.url, p.globalCallActionRequest)
+	log.Infof("CallAction(): %s@%s, %+v", client.name, client.url, p.globalCallActionRequest)
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
 	defer cancel()
 	response, err := client.actionServiceClient.CallAction(ctx, p.globalCallActionRequest)
 	p.globalCallActionRequest = newCallActionRequest()
@@ -461,7 +453,7 @@ func (p *rpcPlugin) callAction(client *rpcClient, action string) {
 		return
 	}
 
-	p.globalCallActionResponse = response
+	*p.globalCallActionResponse = *response
 
 	return
 }
@@ -491,7 +483,7 @@ func (p *rpcPlugin) getGffSize(sVarName *C.char) uint32 {
 		return 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
 	defer cancel()
 	request := pb.SCORCOGetGFFSizeRequest{
 		SVarName: sVarName_,
@@ -531,7 +523,7 @@ func (p *rpcPlugin) getGff(sVarName *C.char, _ *C.uint8_t, _ C.size_t) []byte {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
 	defer cancel()
 	request := pb.SCORCOGetGFFRequest{
 		SVarName: sVarName_,
@@ -580,7 +572,7 @@ func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, gffDataSize C.s
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
 	defer cancel()
 	var request = pb.SCORCOSetGFFRequest{
 		SVarName:    sVarName_,

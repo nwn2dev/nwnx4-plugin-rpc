@@ -87,8 +87,8 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 
 		return 0
 	}
-	config := &rpcConfig{}
-	err = yaml.Unmarshal(configFile, config)
+
+	err = yaml.Unmarshal(configFile, &plugin.config)
 	if err != nil {
 		log.Error(err)
 
@@ -96,7 +96,7 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	}
 
 	// Set up the RPC plugin from the configuration
-	plugin.init(config)
+	plugin.init()
 
 	// Giving back address; still maintained by the plugin itself
 	return C.uint32_t(reflect.ValueOf(plugin).Pointer())
