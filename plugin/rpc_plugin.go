@@ -539,9 +539,7 @@ func (p *rpcPlugin) getGff(sVarName *C.char, _ *C.uint8_t, _ C.size_t) []byte {
 
 func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, gffDataSize C.size_t) {
 	gffDataSize_ := uint32(gffDataSize)
-	ptr := unsafe.Pointer(gffData)
-	defer C.free(ptr)
-	gffData_ := (*[1 << 30]byte)(ptr)[:gffDataSize_:gffDataSize_]
+	gffData_ := C.GoBytes(unsafe.Pointer(gffData), C.int(gffDataSize))
 	splits := strings.SplitN(C.GoString(sVarName), rpcGffVarNameSeparator, 2)
 	if len(splits) != 2 {
 		return
@@ -552,12 +550,9 @@ func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, gffDataSize C.s
 	// CallAction()
 	switch sFunction_ {
 	case rpcSetGff:
-		gffValue := make([]byte, gffDataSize_)
-		copy(gffValue, gffData_)
-
 		p.globalCallActionRequest.Params[sVarName_] = &pb.Value{
 			ValueType: &pb.Value_GffValue{
-				GffValue: gffValue,
+				GffValue: gffData_,
 			},
 		}
 
