@@ -53,12 +53,14 @@ func NWNXCPlugin_GetVersion() *C.char {
 
 //export NWNXCPlugin_GetInfo
 func NWNXCPlugin_GetInfo() *C.char {
-	return C.CString(fmt.Sprintf("%s v%s - %s", pluginName, pluginVersion, pluginDescription))
+	info := fmt.Sprintf("%s v%s - %s", pluginName, pluginVersion, pluginDescription)
+
+	return C.CString(info)
 }
 
 //export NWNXCPlugin_New
 func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
-	// Setup the log file
+	// Set up the log file
 	nwnxHomePath_ := C.GoString(initInfo.nwnx_user_path)
 	logFile, err := os.OpenFile(path.Join(nwnxHomePath_, logFilename), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -73,6 +75,9 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	log.SetOutput(logFile)
 	log.Info(header)
 	log.Info(description)
+	log.SetLevel(log.TraceLevel)
+
+	plugin = newRpcPlugin()
 
 	// Get YAML file with services
 	configFilepath := path.Join(nwnxHomePath_, configFilename)
@@ -82,7 +87,7 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 
 		return 0
 	}
-	config := plugin.config
+	config := &rpcConfig{}
 	err = yaml.Unmarshal(configFile, config)
 	if err != nil {
 		log.Error(err)
@@ -91,7 +96,7 @@ func NWNXCPlugin_New(initInfo C.CPluginInitInfo) C.uint32_t {
 	}
 
 	// Set up the RPC plugin from the configuration
-	plugin = newRpcPlugin(config)
+	plugin.init(config)
 
 	// Giving back address; still maintained by the plugin itself
 	return C.uint32_t(reflect.ValueOf(plugin).Pointer())

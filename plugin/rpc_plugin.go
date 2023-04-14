@@ -2,7 +2,6 @@ package main
 
 import "C"
 import (
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/credentials/insecure"
 	pb "nwnx4.org/nwn2dev/xp_rpc/proto"
@@ -44,16 +43,13 @@ type rpcPlugin struct {
 }
 
 // newRpcPlugin builds and returns a new RPC plugin
-func newRpcPlugin(config *rpcConfig) *rpcPlugin {
-	plugin := &rpcPlugin{
-		config:                   config,
+func newRpcPlugin() *rpcPlugin {
+	return &rpcPlugin{
+		config:                   &rpcConfig{},
 		clients:                  make(map[string]*rpcClient),
 		globalCallActionRequest:  newCallActionRequest(),
 		globalCallActionResponse: newCallActionResponse(),
 	}
-	plugin.init()
-
-	return plugin
 }
 
 func newCallActionRequest() *pb.CallActionRequest {
@@ -71,15 +67,20 @@ func newCallActionResponse() *pb.CallActionResponse {
 
 // init initializes the RPC server
 // Runs on an rpcPlugin and accepts a ServerConfig
-func (p *rpcPlugin) init() {
+func (p *rpcPlugin) init(config *rpcConfig) {
 	log.Info("Initializing RPC plugin")
-	config := p.config
+	if config == nil {
+		log.Error("Configuration is not set")
+
+		return
+	}
+	p.config = config
 
 	// Set the log level based on what was passed if it matches a level
 	for _, logLevel := range log.AllLevels {
 		if strings.EqualFold(logLevel.String(), config.Log.LogLevel) {
+			log.Infof("Log level set as %s", logLevel)
 			log.SetLevel(logLevel)
-			log.Debugf("Log level set as %s", logLevel)
 			break
 		}
 	}
@@ -96,7 +97,7 @@ func (p *rpcPlugin) init() {
 // addRpcClient adds an RPC client
 // Runs on an rpcPlugin and adds a client by name and URL
 func (p *rpcPlugin) addRpcClient(name, url string) {
-	log.Debugf("Adding client: %s@%s", name, url)
+	log.Infof("Adding client: %s@%s", name, url)
 	conn, err := grpc.Dial(url, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Errorf("Unable to attach client: %s@%s", name, url)
@@ -122,16 +123,16 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 		actionServiceClient: pb.NewActionServiceClient(conn),
 	}
 
-	log.Info(fmt.Sprintf("Established client connection and stubs: %s@%s", name, url))
+	log.Infof("Established client connection and stubs: %s@%s", name, url)
 }
 
 // getRpcClient will get an rpcClient by name
 func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
-	log.Debugf("Getting client with name: %s", name)
+	log.Infof("Getting client with name: %s", name)
 	rpcClient, exists := p.clients[name]
 
 	if !exists {
-		log.Error(fmt.Sprintf("Client not declared: %s", name))
+		log.Errorf("Client not declared: %s", name)
 
 		return nil, false
 	}
@@ -143,7 +144,7 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 
 		// Invalid client; try to recreate
 		for i := 0; i < p.config.PerClient.Retries; i++ {
-			log.Infof("Readding client: %s@%s", name, url)
+			log.Infof("Reading client: %s@%s", name, url)
 			p.addRpcClient(name, url)
 			rpcClient, exists = p.clients[name]
 
@@ -265,6 +266,7 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, nParam2 C.int) float32 
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
+	log.Debugf("NWNXGetFloat(%s, %s, %d)", sFunction_, sParam1_, nParam2_)
 
 	// CallAction()
 	switch sFunction_ {
@@ -292,8 +294,8 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, nParam2 C.int) float32 
 	response, err := client.nwnxServiceClient.NWNXGetFloat(ctx, &request)
 	if err != nil {
 		client.isValid = false
-		log.Error(fmt.Sprintf("Call to GetFloat returned error: %s; %s, %s, %d",
-			err, request.SFunction, request.SParam1, request.NParam2))
+		log.Errorf("Call to GetFloat returned error: %s; %s, %s, %d",
+			err, request.SFunction, request.SParam1, request.NParam2)
 
 		return 0.0
 	}
@@ -307,6 +309,7 @@ func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
 	fValue_ := float32(fValue)
+	log.Debugf("NWNXSetFloat(%s, %s, %d, %d, %f)", sFunction_, sParam1_, nParam2_, fValue_)
 
 	// CallAction()
 	switch sFunction_ {
@@ -336,8 +339,8 @@ func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C
 	}
 	if _, err := client.nwnxServiceClient.NWNXSetFloat(ctx, &request); err != nil {
 		client.isValid = false
-		log.Error(fmt.Sprintf("Call to SetFloat returned error: %s; %s, %s, %d, %f",
-			err, request.SFunction, request.SParam1, request.NParam2, request.FValue))
+		log.Errorf("Call to SetFloat returned error: %s; %s, %s, %d, %f",
+			err, request.SFunction, request.SParam1, request.NParam2, request.FValue)
 	}
 }
 
@@ -346,6 +349,7 @@ func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, nParam2 C.int) string 
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
+	log.Debugf("NWNXGetString(%s, %s, %d)", sFunction_, sParam1_, nParam2_)
 
 	// CallAction()
 	switch sFunction_ {
@@ -373,8 +377,8 @@ func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, nParam2 C.int) string 
 	response, err := client.nwnxServiceClient.NWNXGetString(ctx, &request)
 	if err != nil {
 		client.isValid = false
-		log.Error(fmt.Sprintf("Call to GetString returned error: %s; %s, %s, %d",
-			err, request.SFunction, request.SParam1, request.NParam2))
+		log.Errorf("Call to GetString returned error: %s; %s, %s, %d",
+			err, request.SFunction, request.SParam1, request.NParam2)
 
 		return ""
 	}
@@ -388,6 +392,7 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
 	sValue_ := C.GoString(sValue)
+	log.Debugf("NWNXSetString(%s, %s, %d, %d, %s)", sFunction_, sParam1_, nParam2_, sValue_)
 
 	// CallAction()
 	switch sFunction_ {
@@ -433,14 +438,15 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 	}
 	if _, err := client.nwnxServiceClient.NWNXSetString(ctx, &request); err != nil {
 		client.isValid = false
-		log.Error(fmt.Sprintf("Call to SetString returned error: %s; %s, %s, %d, %s",
-			err, request.SFunction, request.SParam1, request.NParam2, request.SValue))
+		log.Errorf("Call to SetString returned error: %s; %s, %s, %d, %s",
+			err, request.SFunction, request.SParam1, request.NParam2, request.SValue)
 	}
 }
 
 // callAction call an action on the client specified
 func (p *rpcPlugin) callAction(client *rpcClient, action string) {
 	p.globalCallActionRequest.Action = action
+	log.Errorf("CallAction(): %s@%s, %+v", client.name, client.url, p.globalCallActionRequest)
 
 	ctx, cancel := context.WithTimeout(context.Background(), p.config.PerClient.getTimeout())
 	defer cancel()
@@ -450,7 +456,7 @@ func (p *rpcPlugin) callAction(client *rpcClient, action string) {
 
 	if err != nil {
 		client.isValid = false
-		log.Error(fmt.Sprintf("Error sending request: %s", err))
+		log.Errorf("Error sending request: %s", err)
 
 		return
 	}
@@ -467,6 +473,7 @@ func (p *rpcPlugin) getGffSize(sVarName *C.char) uint32 {
 		return 0
 	}
 	sFunction_, sVarName_ := splits[0], splits[1]
+	log.Debugf("GetGFFSize(%s)", sVarName)
 
 	// CallAction()
 	switch sFunction_ {
@@ -492,8 +499,7 @@ func (p *rpcPlugin) getGffSize(sVarName *C.char) uint32 {
 	response, err := client.scorcoServiceClient.SCORCOGetGFFSize(ctx, &request)
 	if err != nil {
 		client.isValid = false
-		log.Error(fmt.Sprintf("Call to GetGFFSize returned error: %s; %s",
-			err, request.SVarName))
+		log.Errorf("Call to GetGFFSize returned error: %s; %s", err, request.SVarName)
 
 		return 0
 	}
@@ -507,6 +513,7 @@ func (p *rpcPlugin) getGff(sVarName *C.char, _ *C.uint8_t, _ C.size_t) []byte {
 		return nil
 	}
 	sFunction_, sVarName_ := splits[0], splits[1]
+	log.Debugf("GetGFF(%s)", sVarName)
 
 	// CallAction()
 	switch sFunction_ {
@@ -532,8 +539,7 @@ func (p *rpcPlugin) getGff(sVarName *C.char, _ *C.uint8_t, _ C.size_t) []byte {
 	response, err := client.scorcoServiceClient.SCORCOGetGFF(ctx, &request)
 	if err != nil {
 		client.isValid = false
-		log.Error(fmt.Sprintf("Call to GetGFF returned error: %s; %s",
-			err, request.SVarName))
+		log.Errorf("Call to GetGFF returned error: %s; %s", err, request.SVarName)
 
 		return nil
 	}
@@ -551,6 +557,7 @@ func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, gffDataSize C.s
 		return
 	}
 	sFunction_, sVarName_ := splits[0], splits[1]
+	log.Debugf("SetGFFSize(%s, %x, %d)", sVarName, gffData, gffDataSize)
 
 	// CallAction()
 	switch sFunction_ {
@@ -582,7 +589,6 @@ func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, gffDataSize C.s
 	}
 	if _, err := client.scorcoServiceClient.SCORCOSetGFF(ctx, &request); err != nil {
 		client.isValid = false
-		log.Error(fmt.Sprintf("Call to SetGFF returned error: %s; %s",
-			err, request.SVarName))
+		log.Errorf("Call to SetGFF returned error: %s; %s", err, request.SVarName)
 	}
 }
