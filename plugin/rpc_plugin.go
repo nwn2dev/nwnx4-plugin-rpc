@@ -454,8 +454,6 @@ func (p *rpcPlugin) callAction(client *rpcClient, action string) {
 	}
 
 	*p.globalCallActionResponse = *response
-
-	return
 }
 
 // getGffSize called at the start of RetrieveCampaignObject
