@@ -5,6 +5,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/credentials/insecure"
 	pb "nwnx4.org/nwn2dev/xp_rpc/proto"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -16,7 +17,6 @@ import (
 */
 import "C"
 import (
-	"context"
 	"google.golang.org/grpc"
 )
 
@@ -34,6 +34,8 @@ const rpcGetGff string = "RPC_GET_GFF_"
 const rpcSetGff string = "RPC_SET_GFF_"
 const rpcResetCallAction string = "RPC_RESET_CALL_ACTION_"
 const rpcCallAction string = "RPC_CALL_ACTION_"
+const rpcCallActionParam2Default int32 = -1
+const rpcCallActionParam2ResetCallAction int32 = 1
 
 type rpcPlugin struct {
 	config                   rpcConfig
@@ -63,6 +65,11 @@ func newCallActionResponse() *pb.CallActionResponse {
 	return &pb.CallActionResponse{
 		Data: make(map[string]*pb.Value),
 	}
+}
+
+func (p *rpcPlugin) resetCallAction() {
+	p.globalCallActionRequest = newCallActionRequest()
+	p.globalCallActionResponse = newCallActionResponse()
 }
 
 // init initializes the RPC plugin
@@ -185,23 +192,7 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 *C.char, nParam2 C.int) int32 {
 		return 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
-	defer cancel()
-	request := pb.NWNXGetIntRequest{
-		SFunction: sFunction_,
-		SParam1:   sParam1_,
-		NParam2:   nParam2_,
-	}
-	response, err := client.nwnxServiceClient.NWNXGetInt(ctx, &request)
-	if err != nil {
-		client.isValid = false
-		log.Errorf("Call to GetInt returned error: %s; %s, %s, %d",
-			err, request.SFunction, request.SParam1, request.NParam2)
-
-		return 0
-	}
-
-	return response.Value
+	return client.NWNXGetInt(sFunction_, sParam1_, nParam2_, p.config.getTimeout())
 }
 
 // setInt the body of the NWNXSetInt() call
@@ -215,6 +206,10 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.i
 	// CallAction()
 	switch sFunction_ {
 	case rpcSetInt:
+		if nParam2_ == rpcCallActionParam2ResetCallAction {
+			p.resetCallAction()
+		}
+
 		p.globalCallActionRequest.Params[sParam1_] = &pb.Value{
 			ValueType: &pb.Value_NValue{
 				NValue: nValue_,
@@ -223,6 +218,10 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.i
 
 		return
 	case rpcSetBool:
+		if nParam2_ == rpcCallActionParam2ResetCallAction {
+			p.resetCallAction()
+		}
+
 		p.globalCallActionRequest.Params[sParam1_] = &pb.Value{
 			ValueType: &pb.Value_BValue{
 				BValue: nValue != 0,
@@ -238,19 +237,7 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.i
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
-	defer cancel()
-	request := pb.NWNXSetIntRequest{
-		SFunction: sFunction_,
-		SParam1:   sParam1_,
-		NParam2:   nParam2_,
-		NValue:    nValue_,
-	}
-	if _, err := client.nwnxServiceClient.NWNXSetInt(ctx, &request); err != nil {
-		client.isValid = false
-		log.Errorf("Call to SetInt returned error: %s; %s, %s, %d, %d",
-			err, request.SFunction, request.SParam1, request.NParam2, request.NValue)
-	}
+	client.NWNXSetInt(sFunction_, sParam1_, nParam2_, nValue_, p.config.getTimeout())
 }
 
 // getFloat the body of the NWNXGetFloat() call
@@ -276,23 +263,7 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, nParam2 C.int) float32 
 		return 0.0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
-	defer cancel()
-	request := pb.NWNXGetFloatRequest{
-		SFunction: sFunction_,
-		SParam1:   sParam1_,
-		NParam2:   nParam2_,
-	}
-	response, err := client.nwnxServiceClient.NWNXGetFloat(ctx, &request)
-	if err != nil {
-		client.isValid = false
-		log.Errorf("Call to GetFloat returned error: %s; %s, %s, %d",
-			err, request.SFunction, request.SParam1, request.NParam2)
-
-		return 0.0
-	}
-
-	return response.Value
+	return client.NWNXGetFloat(sFunction_, sParam1_, nParam2_, p.config.getTimeout())
 }
 
 // setFloat the body of the NWNXSetFloat() call
@@ -306,6 +277,10 @@ func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C
 	// CallAction()
 	switch sFunction_ {
 	case rpcSetFloat:
+		if nParam2_ == rpcCallActionParam2ResetCallAction {
+			p.resetCallAction()
+		}
+
 		p.globalCallActionRequest.Params[sParam1_] = &pb.Value{
 			ValueType: &pb.Value_FValue{
 				FValue: fValue_,
@@ -321,19 +296,7 @@ func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
-	defer cancel()
-	request := pb.NWNXSetFloatRequest{
-		SFunction: sFunction_,
-		SParam1:   sParam1_,
-		NParam2:   nParam2_,
-		FValue:    fValue_,
-	}
-	if _, err := client.nwnxServiceClient.NWNXSetFloat(ctx, &request); err != nil {
-		client.isValid = false
-		log.Errorf("Call to SetFloat returned error: %s; %s, %s, %d, %f",
-			err, request.SFunction, request.SParam1, request.NParam2, request.FValue)
-	}
+	client.NWNXSetFloat(sFunction_, sParam1_, nParam2_, fValue_, p.config.getTimeout())
 }
 
 // getString the body of the NWNXGetString() call
@@ -359,23 +322,7 @@ func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, nParam2 C.int) string 
 		return ""
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
-	defer cancel()
-	request := pb.NWNXGetStringRequest{
-		SFunction: sFunction_,
-		SParam1:   sParam1_,
-		NParam2:   nParam2_,
-	}
-	response, err := client.nwnxServiceClient.NWNXGetString(ctx, &request)
-	if err != nil {
-		client.isValid = false
-		log.Errorf("Call to GetString returned error: %s; %s, %s, %d",
-			err, request.SFunction, request.SParam1, request.NParam2)
-
-		return ""
-	}
-
-	return response.Value
+	return client.NWNXGetString(sFunction_, sParam1_, nParam2_, p.config.getTimeout())
 }
 
 // setString the body of the NWNXSetString() call
@@ -389,6 +336,10 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 	// CallAction()
 	switch sFunction_ {
 	case rpcSetString:
+		if nParam2_ == rpcCallActionParam2ResetCallAction {
+			p.resetCallAction()
+		}
+
 		p.globalCallActionRequest.Params[sParam1_] = &pb.Value{
 			ValueType: &pb.Value_SValue{
 				SValue: sValue_,
@@ -397,8 +348,7 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 
 		return
 	case rpcResetCallAction:
-		p.globalCallActionRequest = newCallActionRequest()
-		p.globalCallActionResponse = newCallActionResponse()
+		p.resetCallAction()
 
 		return
 	case rpcCallAction:
@@ -409,7 +359,13 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 		}
 
 		// sValue_ contains the action
-		p.callAction(client, sValue_)
+		p.globalCallActionRequest.Action = sValue_
+		response, err := client.callAction(p.globalCallActionRequest, p.config.getTimeout())
+		p.resetCallAction()
+
+		if err == nil {
+			*p.globalCallActionResponse = *response
+		}
 
 		return
 	}
@@ -420,49 +376,18 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
-	defer cancel()
-	request := pb.NWNXSetStringRequest{
-		SFunction: sFunction_,
-		SParam1:   sParam1_,
-		NParam2:   nParam2_,
-		SValue:    sValue_,
-	}
-	if _, err := client.nwnxServiceClient.NWNXSetString(ctx, &request); err != nil {
-		client.isValid = false
-		log.Errorf("Call to SetString returned error: %s; %s, %s, %d, %s",
-			err, request.SFunction, request.SParam1, request.NParam2, request.SValue)
-	}
-}
-
-// callAction call an action on the client specified
-func (p *rpcPlugin) callAction(client *rpcClient, action string) {
-	p.globalCallActionRequest.Action = action
-	log.Infof("CallAction(): %s@%s, %+v", client.name, client.url, p.globalCallActionRequest)
-
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
-	defer cancel()
-	response, err := client.actionServiceClient.CallAction(ctx, p.globalCallActionRequest)
-	p.globalCallActionRequest = newCallActionRequest()
-	p.globalCallActionResponse = newCallActionResponse()
-
-	if err != nil {
-		client.isValid = false
-		log.Errorf("Error sending request: %s", err)
-
-		return
-	}
-
-	*p.globalCallActionResponse = *response
+	client.NWNXSetString(sFunction_, sParam1_, nParam2_, sValue_, p.config.getTimeout())
 }
 
 // getGffSize called at the start of RetrieveCampaignObject
 func (p *rpcPlugin) getGffSize(sVarName *C.char) uint32 {
 	splits := strings.SplitN(C.GoString(sVarName), rpcGffVarNameSeparator, 2)
-	if len(splits) != 2 {
+	var sFunction_, sVarName_ string
+	if len(splits) == 2 {
+		sFunction_, sVarName_ = splits[0], splits[1]
+	} else {
 		return 0
 	}
-	sFunction_, sVarName_ := splits[0], splits[1]
 	log.Debugf("GetGFFSize(%s)", sVarName)
 
 	// CallAction()
@@ -481,28 +406,18 @@ func (p *rpcPlugin) getGffSize(sVarName *C.char) uint32 {
 		return 0
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
-	defer cancel()
-	request := pb.SCORCOGetGFFSizeRequest{
-		SVarName: sVarName_,
-	}
-	response, err := client.scorcoServiceClient.SCORCOGetGFFSize(ctx, &request)
-	if err != nil {
-		client.isValid = false
-		log.Errorf("Call to GetGFFSize returned error: %s; %s", err, request.SVarName)
-
-		return 0
-	}
-
-	return response.Size
+	return client.SCORCOGetGFFSize(sVarName_, p.config.getTimeout())
 }
 
+// getGff called at the end of RetrieveCampaignObject
 func (p *rpcPlugin) getGff(sVarName *C.char, _ *C.uint8_t, _ C.size_t) []byte {
 	splits := strings.SplitN(C.GoString(sVarName), rpcGffVarNameSeparator, 2)
-	if len(splits) != 2 {
+	var sFunction_, sVarName_ string
+	if len(splits) == 2 {
+		sFunction_, sVarName_ = splits[0], splits[1]
+	} else {
 		return nil
 	}
-	sFunction_, sVarName_ := splits[0], splits[1]
 	log.Debugf("GetGFF(%s)", sVarName)
 
 	// CallAction()
@@ -521,35 +436,31 @@ func (p *rpcPlugin) getGff(sVarName *C.char, _ *C.uint8_t, _ C.size_t) []byte {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
-	defer cancel()
-	request := pb.SCORCOGetGFFRequest{
-		SVarName: sVarName_,
-	}
-	response, err := client.scorcoServiceClient.SCORCOGetGFF(ctx, &request)
-	if err != nil {
-		client.isValid = false
-		log.Errorf("Call to GetGFF returned error: %s; %s", err, request.SVarName)
-
-		return nil
-	}
-
-	return response.GetGffData()
+	return client.SCORCOGetGFF(sVarName_, p.config.getTimeout())
 }
 
+// setGff called during StoreCampaignObject
 func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, gffDataSize C.size_t) {
 	gffDataSize_ := uint32(gffDataSize)
 	gffData_ := C.GoBytes(unsafe.Pointer(gffData), C.int(gffDataSize))
-	splits := strings.SplitN(C.GoString(sVarName), rpcGffVarNameSeparator, 2)
-	if len(splits) != 2 {
+	splits := strings.SplitN(C.GoString(sVarName), rpcGffVarNameSeparator, 3)
+	var sFunction_, sParam2_, sVarName_ string
+	if len(splits) == 2 {
+		sFunction_, sVarName_ = splits[0], splits[1]
+	} else if len(splits) == 3 {
+		sFunction_, sParam2_, sVarName_ = splits[0], splits[1], splits[2]
+	} else {
 		return
 	}
-	sFunction_, sVarName_ := splits[0], splits[1]
 	log.Debugf("SetGFFSize(%s, %x, %d)", sVarName, gffData, gffDataSize)
 
 	// CallAction()
 	switch sFunction_ {
 	case rpcSetGff:
+		if nParam2_, err := strconv.Atoi(sParam2_); err == nil && int32(nParam2_) == rpcCallActionParam2ResetCallAction {
+			p.resetCallAction()
+		}
+
 		p.globalCallActionRequest.Params[sVarName_] = &pb.Value{
 			ValueType: &pb.Value_GffValue{
 				GffValue: gffData_,
@@ -565,15 +476,5 @@ func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, gffDataSize C.s
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), p.config.getTimeout())
-	defer cancel()
-	var request = pb.SCORCOSetGFFRequest{
-		SVarName:    sVarName_,
-		GffData:     gffData_,
-		GffDataSize: gffDataSize_,
-	}
-	if _, err := client.scorcoServiceClient.SCORCOSetGFF(ctx, &request); err != nil {
-		client.isValid = false
-		log.Errorf("Call to SetGFF returned error: %s; %s", err, request.SVarName)
-	}
+	client.SCORCOSetGFF(sVarName_, gffData_, gffDataSize_, p.config.getTimeout())
 }

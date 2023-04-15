@@ -14,59 +14,61 @@ const string RPC_GET_GFF = "RPC_GET_GFF_";
 const string RPC_SET_GFF = "RPC_SET_GFF_";
 const string RPC_RESET_CALL_ACTION = "RPC_RESET_CALL_ACTION_";
 const string RPC_CALL_ACTION = "RPC_CALL_ACTION_";
+const int RPC_CALL_ACTION_PARAM_2_DEFAULT = -1;
+const int RPC_CALL_ACTION_PARAM_2_RESET_CALL_ACTION = 1;
 
 // CallAction
 void RPCResetCallAction();
 void RPCCallAction(string sClient, string sAction);
 int RPCGetIntEx(string sParam1);
-void RPCSetIntEx(string sParam1, int nValue);
+void RPCSetIntEx(string sParam1, int nValue, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
 int RPCGetBoolEx(string sParam1);
-void RPCSetBoolEx(string sParam1, int bValue);
+void RPCSetBoolEx(string sParam1, int bValue, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
 float RPCGetFloatEx(string sParam1);
-void RPCSetFloatEx(string sParam1, float fValue);
+void RPCSetFloatEx(string sParam1, float fValue, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
 string RPCGetStringEx(string sParam1);
-void RPCSetStringEx(string sParam1, string sValue);
+void RPCSetStringEx(string sParam1, string sValue, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
 object RPCRetrieveCampaignObjectEx(string sVarName);
-int RPCStoreCampaignObjectEx(string sVarName, object oObject);
+int RPCStoreCampaignObjectEx(string sVarName, object oObject, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
 
 void RPCResetCallAction() {
-	NWNXSetString(RPC_PLUGIN_ID, RPC_RESET_CALL_ACTION, "", -1, "");
+	NWNXSetString(RPC_PLUGIN_ID, RPC_RESET_CALL_ACTION, "", RPC_CALL_ACTION_PARAM_2_DEFAULT, "");
 }
 
 void RPCCallAction(string sClient, string sAction) {
-	NWNXSetString(RPC_PLUGIN_ID, RPC_CALL_ACTION, sClient, -1, sAction);
+	NWNXSetString(RPC_PLUGIN_ID, RPC_CALL_ACTION, sClient, RPC_CALL_ACTION_PARAM_2_DEFAULT, sAction);
 }
 
 int RPCGetIntEx(string sParam1) {
-	return NWNXGetInt(RPC_PLUGIN_ID, RPC_GET_INT, sParam1, -1);
+	return NWNXGetInt(RPC_PLUGIN_ID, RPC_GET_INT, sParam1, RPC_CALL_ACTION_PARAM_2_DEFAULT);
 }
 
-void RPCSetIntEx(string sParam1, int nValue) {
-	NWNXSetInt(RPC_PLUGIN_ID, RPC_SET_INT, sParam1, -1, nValue);
+void RPCSetIntEx(string sParam1, int nValue, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT) {
+	NWNXSetInt(RPC_PLUGIN_ID, RPC_SET_INT, sParam1, nParam2, nValue);
 }
 
 int RPCGetBoolEx(string sParam1) {
-	return NWNXGetInt(RPC_PLUGIN_ID, RPC_GET_BOOL, sParam1, -1);
+	return NWNXGetInt(RPC_PLUGIN_ID, RPC_GET_BOOL, sParam1, RPC_CALL_ACTION_PARAM_2_DEFAULT);
 }
 
-void RPCSetBoolEx(string sParam1, int bValue) {
-	NWNXSetInt(RPC_PLUGIN_ID, RPC_SET_BOOL, sParam1, -1, bValue != 0);
+void RPCSetBoolEx(string sParam1, int bValue, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT) {
+	NWNXSetInt(RPC_PLUGIN_ID, RPC_SET_BOOL, sParam1, nParam2, bValue != 0);
 }
 
 float RPCGetFloatEx(string sParam1) {
-	return NWNXGetFloat(RPC_PLUGIN_ID, RPC_GET_FLOAT, sParam1, -1);
+	return NWNXGetFloat(RPC_PLUGIN_ID, RPC_GET_FLOAT, sParam1, RPC_CALL_ACTION_PARAM_2_DEFAULT);
 }
 
-void RPCSetFloatEx(string sParam1, float fValue) {
-	NWNXSetFloat(RPC_PLUGIN_ID, RPC_SET_FLOAT, sParam1, -1, fValue);
+void RPCSetFloatEx(string sParam1, float fValue, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT) {
+	NWNXSetFloat(RPC_PLUGIN_ID, RPC_SET_FLOAT, sParam1, nParam2, fValue);
 }
 
 string RPCGetStringEx(string sParam1) {
-	return NWNXGetString(RPC_PLUGIN_ID, RPC_GET_STRING, sParam1, -1);
+	return NWNXGetString(RPC_PLUGIN_ID, RPC_GET_STRING, sParam1, RPC_CALL_ACTION_PARAM_2_DEFAULT);
 }
 
-void RPCSetStringEx(string sParam1, string sValue) {
-	NWNXSetString(RPC_PLUGIN_ID, RPC_SET_STRING, sParam1, -1, sValue);
+void RPCSetStringEx(string sParam1, string sValue, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT) {
+	NWNXSetString(RPC_PLUGIN_ID, RPC_SET_STRING, sParam1, nParam2, sValue);
 }
 
 object RPCRetrieveCampaignObjectEx(string sVarName) {
@@ -74,8 +76,8 @@ object RPCRetrieveCampaignObjectEx(string sVarName) {
 }
 
 
-int RPCStoreCampaignObjectEx(string sVarName, object oObject) {
-	return StoreCampaignObject("NWNX." + RPC_PLUGIN_ID, RPC_SET_GFF + RPC_GFF_VAR_NAME_SEPARATOR + sVarName, oObject);
+int RPCStoreCampaignObjectEx(string sVarName, object oObject, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT) {
+	return StoreCampaignObject("NWNX." + RPC_PLUGIN_ID, RPC_SET_GFF + RPC_GFF_VAR_NAME_SEPARATOR + IntToString(nParam2) + RPC_GFF_VAR_NAME_SEPARATOR + sVarName, oObject);
 }
 
 // NWNX*
