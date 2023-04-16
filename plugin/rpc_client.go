@@ -30,13 +30,13 @@ func (c rpcClient) callAction(request *pb.CallActionRequest, timeout time.Durati
 	return response, err
 }
 
-func (c rpcClient) NWNXGetInt(function string, param1 string, param2 int32, timeout time.Duration) int32 {
+func (c rpcClient) NWNXGetInt(sFunction, sParam1 string, nParam2 int32, timeout time.Duration) int32 {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	request := pb.NWNXGetIntRequest{
-		SFunction: function,
-		SParam1:   param1,
-		NParam2:   param2,
+		SFunction: sFunction,
+		SParam1:   sParam1,
+		NParam2:   nParam2,
 	}
 
 	response, err := c.nwnxServiceClient.NWNXGetInt(ctx, &request)
@@ -51,14 +51,14 @@ func (c rpcClient) NWNXGetInt(function string, param1 string, param2 int32, time
 	return response.Value
 }
 
-func (c rpcClient) NWNXSetInt(function string, param1 string, param2 int32, value int32, timeout time.Duration) {
+func (c rpcClient) NWNXSetInt(sFunction, sParam1 string, nParam2, nValue int32, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	request := pb.NWNXSetIntRequest{
-		SFunction: function,
-		SParam1:   param1,
-		NParam2:   param2,
-		NValue:    value,
+		SFunction: sFunction,
+		SParam1:   sParam1,
+		NParam2:   nParam2,
+		NValue:    nValue,
 	}
 	if _, err := c.nwnxServiceClient.NWNXSetInt(ctx, &request); err != nil {
 		c.isValid = false
@@ -67,13 +67,13 @@ func (c rpcClient) NWNXSetInt(function string, param1 string, param2 int32, valu
 	}
 }
 
-func (c rpcClient) NWNXGetFloat(function string, param1 string, param2 int32, timeout time.Duration) float32 {
+func (c rpcClient) NWNXGetFloat(sFunction, sParam1 string, nParam2 int32, timeout time.Duration) float32 {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	request := pb.NWNXGetFloatRequest{
-		SFunction: function,
-		SParam1:   param1,
-		NParam2:   param2,
+		SFunction: sFunction,
+		SParam1:   sParam1,
+		NParam2:   nParam2,
 	}
 	response, err := c.nwnxServiceClient.NWNXGetFloat(ctx, &request)
 	if err != nil {
@@ -87,14 +87,14 @@ func (c rpcClient) NWNXGetFloat(function string, param1 string, param2 int32, ti
 	return response.Value
 }
 
-func (c rpcClient) NWNXSetFloat(function string, param1 string, param2 int32, value float32, timeout time.Duration) {
+func (c rpcClient) NWNXSetFloat(sFunction, sParam1 string, nParam2 int32, fValue float32, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	request := pb.NWNXSetFloatRequest{
-		SFunction: function,
-		SParam1:   param1,
-		NParam2:   param2,
-		FValue:    value,
+		SFunction: sFunction,
+		SParam1:   sParam1,
+		NParam2:   nParam2,
+		FValue:    fValue,
 	}
 	if _, err := c.nwnxServiceClient.NWNXSetFloat(ctx, &request); err != nil {
 		c.isValid = false
@@ -103,13 +103,13 @@ func (c rpcClient) NWNXSetFloat(function string, param1 string, param2 int32, va
 	}
 }
 
-func (c rpcClient) NWNXGetString(function string, param1 string, param2 int32, timeout time.Duration) string {
+func (c rpcClient) NWNXGetString(sFunction, sParam1 string, nParam2 int32, timeout time.Duration) string {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	request := pb.NWNXGetStringRequest{
-		SFunction: function,
-		SParam1:   param1,
-		NParam2:   param2,
+		SFunction: sFunction,
+		SParam1:   sParam1,
+		NParam2:   nParam2,
 	}
 	response, err := c.nwnxServiceClient.NWNXGetString(ctx, &request)
 	if err != nil {
@@ -123,14 +123,14 @@ func (c rpcClient) NWNXGetString(function string, param1 string, param2 int32, t
 	return response.Value
 }
 
-func (c rpcClient) NWNXSetString(function string, param1 string, param2 int32, value string, timeout time.Duration) {
+func (c rpcClient) NWNXSetString(sFunction string, sParam1 string, nParam2 int32, sValue string, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	request := pb.NWNXSetStringRequest{
-		SFunction: function,
-		SParam1:   param1,
-		NParam2:   param2,
-		SValue:    value,
+		SFunction: sFunction,
+		SParam1:   sParam1,
+		NParam2:   nParam2,
+		SValue:    sValue,
 	}
 	if _, err := c.nwnxServiceClient.NWNXSetString(ctx, &request); err != nil {
 		c.isValid = false
@@ -139,11 +139,11 @@ func (c rpcClient) NWNXSetString(function string, param1 string, param2 int32, v
 	}
 }
 
-func (c rpcClient) SCORCOGetGFFSize(varName string, timeout time.Duration) uint32 {
+func (c rpcClient) SCORCOGetGFFSize(sVarName string, timeout time.Duration) uint32 {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	request := pb.SCORCOGetGFFSizeRequest{
-		SVarName: varName,
+		SVarName: sVarName,
 	}
 	response, err := c.scorcoServiceClient.SCORCOGetGFFSize(ctx, &request)
 	if err != nil {
@@ -156,11 +156,11 @@ func (c rpcClient) SCORCOGetGFFSize(varName string, timeout time.Duration) uint3
 	return response.Size
 }
 
-func (c rpcClient) SCORCOGetGFF(varName string, timeout time.Duration) []byte {
+func (c rpcClient) SCORCOGetGFF(sVarName string, timeout time.Duration) []byte {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	request := pb.SCORCOGetGFFRequest{
-		SVarName: varName,
+		SVarName: sVarName,
 	}
 	response, err := c.scorcoServiceClient.SCORCOGetGFF(ctx, &request)
 	if err != nil {
@@ -173,11 +173,11 @@ func (c rpcClient) SCORCOGetGFF(varName string, timeout time.Duration) []byte {
 	return response.GetGffData()
 }
 
-func (c rpcClient) SCORCOSetGFF(varName string, gffData []byte, gffDataSize uint32, timeout time.Duration) {
+func (c rpcClient) SCORCOSetGFF(sVarName string, gffData []byte, gffDataSize uint32, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	var request = pb.SCORCOSetGFFRequest{
-		SVarName:    varName,
+		SVarName:    sVarName,
 		GffData:     gffData,
 		GffDataSize: gffDataSize,
 	}

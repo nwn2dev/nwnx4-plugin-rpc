@@ -1,26 +1,16 @@
 package main
 
-import "C"
 import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/credentials/insecure"
 	pb "nwnx4.org/nwn2dev/xp_rpc/proto"
-	"strconv"
 	"strings"
 	"time"
-	"unsafe"
 )
 
-/*
-#include <stdlib.h>
-#include <stdint.h>
-*/
-import "C"
 import (
 	"google.golang.org/grpc"
 )
-
-const rpcGffVarNameSeparator = "!"
 
 const rpcGetInt string = "RPC_GET_INT_"
 const rpcSetInt string = "RPC_SET_INT_"
@@ -35,7 +25,8 @@ const rpcSetGff string = "RPC_SET_GFF_"
 const rpcResetCallAction string = "RPC_RESET_CALL_ACTION_"
 const rpcCallAction string = "RPC_CALL_ACTION_"
 const rpcCallActionParam2Default int32 = -1
-const rpcCallActionParam2ResetCallAction int32 = 1
+const rpcStartCallAction int32 = 1
+const rpcEndCallAction int32 = 2
 
 type rpcPlugin struct {
 	config                   rpcConfig
@@ -162,23 +153,27 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 }
 
 // getInt the body of the NWNXGetInt() call
-func (p *rpcPlugin) getInt(sFunction, sParam1 *C.char, nParam2 C.int) int32 {
-	sFunction_ := C.GoString(sFunction)
-	sParam1_ := C.GoString(sParam1)
-	nParam2_ := int32(nParam2)
-	log.Debugf("NWNXGetInt(%s, %s, %d)", sFunction_, sParam1_, nParam2_)
-
+func (p *rpcPlugin) getInt(sFunction, sParam1 string, nParam2 int32) int32 {
 	// CallAction()
-	switch sFunction_ {
+	switch sFunction {
 	case rpcGetInt:
-		if v, found := p.globalCallActionResponse.Data[sParam1_]; found {
-			return v.GetNValue()
+		if v, found := p.globalCallActionResponse.Data[sParam1]; found {
+			value := v.GetNValue()
+			if nParam2 == rpcEndCallAction {
+				p.resetCallAction()
+			}
+
+			return value
 		}
 
 		return 0
 	case rpcGetBool:
-		if v, found := p.globalCallActionResponse.Data[sParam1_]; found {
-			if v.GetBValue() {
+		if v, found := p.globalCallActionResponse.Data[sParam1]; found {
+			value := v.GetBValue()
+			if nParam2 == rpcStartCallAction {
+				p.resetCallAction()
+			}
+			if value {
 				return 1
 			}
 		}
@@ -187,42 +182,36 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 *C.char, nParam2 C.int) int32 {
 	}
 
 	// NWNXGetInt()
-	client, ok := p.getRpcClient(sFunction_)
+	client, ok := p.getRpcClient(sFunction)
 	if !ok {
 		return 0
 	}
 
-	return client.NWNXGetInt(sFunction_, sParam1_, nParam2_, p.config.getTimeout())
+	return client.NWNXGetInt(sFunction, sParam1, nParam2, p.config.getTimeout())
 }
 
 // setInt the body of the NWNXSetInt() call
-func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.int) {
-	sFunction_ := C.GoString(sFunction)
-	sParam1_ := C.GoString(sParam1)
-	nParam2_ := int32(nParam2)
-	nValue_ := int32(nValue)
-	log.Debugf("NWNXSetInt(%s, %s, %d, %d)", sFunction_, sParam1_, nParam2_, nValue_)
-
+func (p *rpcPlugin) setInt(sFunction, sParam1 string, nParam2, nValue int32) {
 	// CallAction()
-	switch sFunction_ {
+	switch sFunction {
 	case rpcSetInt:
-		if nParam2_ == rpcCallActionParam2ResetCallAction {
+		if nParam2 == rpcStartCallAction {
 			p.resetCallAction()
 		}
 
-		p.globalCallActionRequest.Params[sParam1_] = &pb.Value{
+		p.globalCallActionRequest.Params[sParam1] = &pb.Value{
 			ValueType: &pb.Value_NValue{
-				NValue: nValue_,
+				NValue: nValue,
 			},
 		}
 
 		return
 	case rpcSetBool:
-		if nParam2_ == rpcCallActionParam2ResetCallAction {
+		if nParam2 == rpcStartCallAction {
 			p.resetCallAction()
 		}
 
-		p.globalCallActionRequest.Params[sParam1_] = &pb.Value{
+		p.globalCallActionRequest.Params[sParam1] = &pb.Value{
 			ValueType: &pb.Value_BValue{
 				BValue: nValue != 0,
 			},
@@ -232,58 +221,52 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 *C.char, nParam2 C.int, nValue C.i
 	}
 
 	// NWNXSetInt()
-	client, ok := p.getRpcClient(sFunction_)
+	client, ok := p.getRpcClient(sFunction)
 	if !ok {
 		return
 	}
 
-	client.NWNXSetInt(sFunction_, sParam1_, nParam2_, nValue_, p.config.getTimeout())
+	client.NWNXSetInt(sFunction, sParam1, nParam2, nValue, p.config.getTimeout())
 }
 
 // getFloat the body of the NWNXGetFloat() call
-func (p *rpcPlugin) getFloat(sFunction, sParam1 *C.char, nParam2 C.int) float32 {
-	sFunction_ := C.GoString(sFunction)
-	sParam1_ := C.GoString(sParam1)
-	nParam2_ := int32(nParam2)
-	log.Debugf("NWNXGetFloat(%s, %s, %d)", sFunction_, sParam1_, nParam2_)
-
+func (p *rpcPlugin) getFloat(sFunction, sParam1 string, nParam2 int32) float32 {
 	// CallAction()
-	switch sFunction_ {
+	switch sFunction {
 	case rpcGetFloat:
-		if v, found := p.globalCallActionResponse.Data[sParam1_]; found {
-			return v.GetFValue()
+		if v, found := p.globalCallActionResponse.Data[sParam1]; found {
+			value := v.GetFValue()
+			if nParam2 == rpcEndCallAction {
+				p.resetCallAction()
+			}
+
+			return value
 		}
 
 		return 0.0
 	}
 
 	// NWNXGetFloat()
-	client, ok := p.getRpcClient(sFunction_)
+	client, ok := p.getRpcClient(sFunction)
 	if !ok {
 		return 0.0
 	}
 
-	return client.NWNXGetFloat(sFunction_, sParam1_, nParam2_, p.config.getTimeout())
+	return client.NWNXGetFloat(sFunction, sParam1, nParam2, p.config.getTimeout())
 }
 
 // setFloat the body of the NWNXSetFloat() call
-func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
-	sFunction_ := C.GoString(sFunction)
-	sParam1_ := C.GoString(sParam1)
-	nParam2_ := int32(nParam2)
-	fValue_ := float32(fValue)
-	log.Debugf("NWNXSetFloat(%s, %s, %d, %d, %f)", sFunction_, sParam1_, nParam2_, fValue_)
-
+func (p *rpcPlugin) setFloat(sFunction, sParam1 string, nParam2 int32, fValue float32) {
 	// CallAction()
-	switch sFunction_ {
+	switch sFunction {
 	case rpcSetFloat:
-		if nParam2_ == rpcCallActionParam2ResetCallAction {
+		if nParam2 == rpcStartCallAction {
 			p.resetCallAction()
 		}
 
-		p.globalCallActionRequest.Params[sParam1_] = &pb.Value{
+		p.globalCallActionRequest.Params[sParam1] = &pb.Value{
 			ValueType: &pb.Value_FValue{
-				FValue: fValue_,
+				FValue: fValue,
 			},
 		}
 
@@ -291,58 +274,52 @@ func (p *rpcPlugin) setFloat(sFunction, sParam1 *C.char, nParam2 C.int, fValue C
 	}
 
 	// NWNXSetFloat()
-	client, ok := p.getRpcClient(sFunction_)
+	client, ok := p.getRpcClient(sFunction)
 	if !ok {
 		return
 	}
 
-	client.NWNXSetFloat(sFunction_, sParam1_, nParam2_, fValue_, p.config.getTimeout())
+	client.NWNXSetFloat(sFunction, sParam1, nParam2, fValue, p.config.getTimeout())
 }
 
 // getString the body of the NWNXGetString() call
-func (p *rpcPlugin) getString(sFunction, sParam1 *C.char, nParam2 C.int) string {
-	sFunction_ := C.GoString(sFunction)
-	sParam1_ := C.GoString(sParam1)
-	nParam2_ := int32(nParam2)
-	log.Debugf("NWNXGetString(%s, %s, %d)", sFunction_, sParam1_, nParam2_)
-
+func (p *rpcPlugin) getString(sFunction, sParam1 string, nParam2 int32) string {
 	// CallAction()
-	switch sFunction_ {
+	switch sFunction {
 	case rpcGetString:
-		if v, found := p.globalCallActionResponse.Data[sParam1_]; found {
-			return v.GetSValue()
+		if v, found := p.globalCallActionResponse.Data[sParam1]; found {
+			value := v.GetSValue()
+			if nParam2 == rpcEndCallAction {
+				p.resetCallAction()
+			}
+
+			return value
 		}
 
 		return ""
 	}
 
 	// NWNXGetString()
-	client, ok := p.getRpcClient(sFunction_)
+	client, ok := p.getRpcClient(sFunction)
 	if !ok {
 		return ""
 	}
 
-	return client.NWNXGetString(sFunction_, sParam1_, nParam2_, p.config.getTimeout())
+	return client.NWNXGetString(sFunction, sParam1, nParam2, p.config.getTimeout())
 }
 
 // setString the body of the NWNXSetString() call
-func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
-	sFunction_ := C.GoString(sFunction)
-	sParam1_ := C.GoString(sParam1)
-	nParam2_ := int32(nParam2)
-	sValue_ := C.GoString(sValue)
-	log.Debugf("NWNXSetString(%s, %s, %d, %s)", sFunction_, sParam1_, nParam2_, sValue_)
-
+func (p *rpcPlugin) setString(sFunction, sParam1 string, nParam2 int32, sValue string) {
 	// CallAction()
-	switch sFunction_ {
+	switch sFunction {
 	case rpcSetString:
-		if nParam2_ == rpcCallActionParam2ResetCallAction {
+		if nParam2 == rpcStartCallAction {
 			p.resetCallAction()
 		}
 
-		p.globalCallActionRequest.Params[sParam1_] = &pb.Value{
+		p.globalCallActionRequest.Params[sParam1] = &pb.Value{
 			ValueType: &pb.Value_SValue{
-				SValue: sValue_,
+				SValue: sValue,
 			},
 		}
 
@@ -353,13 +330,13 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 		return
 	case rpcCallAction:
 		// sParam1_ holds the client identifier
-		client, ok := p.getRpcClient(sParam1_)
+		client, ok := p.getRpcClient(sParam1)
 		if !ok {
 			return
 		}
 
 		// sValue_ contains the action
-		p.globalCallActionRequest.Action = sValue_
+		p.globalCallActionRequest.Action = sValue
 		response, err := client.callAction(p.globalCallActionRequest, p.config.getTimeout())
 		p.resetCallAction()
 
@@ -371,29 +348,20 @@ func (p *rpcPlugin) setString(sFunction, sParam1 *C.char, nParam2 C.int, sValue 
 	}
 
 	// NWNXSetString()
-	client, ok := p.getRpcClient(sFunction_)
+	client, ok := p.getRpcClient(sFunction)
 	if !ok {
 		return
 	}
 
-	client.NWNXSetString(sFunction_, sParam1_, nParam2_, sValue_, p.config.getTimeout())
+	client.NWNXSetString(sFunction, sParam1, nParam2, sValue, p.config.getTimeout())
 }
 
 // getGffSize called at the start of RetrieveCampaignObject
-func (p *rpcPlugin) getGffSize(sVarName *C.char) uint32 {
-	splits := strings.SplitN(C.GoString(sVarName), rpcGffVarNameSeparator, 2)
-	var sFunction_, sVarName_ string
-	if len(splits) == 2 {
-		sFunction_, sVarName_ = splits[0], splits[1]
-	} else {
-		return 0
-	}
-	log.Debugf("GetGFFSize(%s)", sVarName)
-
+func (p *rpcPlugin) getGffSize(sFunction, sVarName string, _ int32) uint32 {
 	// CallAction()
-	switch sFunction_ {
+	switch sFunction {
 	case rpcGetGff:
-		if v, found := p.globalCallActionResponse.Data[sVarName_]; found {
+		if v, found := p.globalCallActionResponse.Data[sVarName]; found {
 			return uint32(len(v.GetGffValue()))
 		}
 
@@ -401,69 +369,52 @@ func (p *rpcPlugin) getGffSize(sVarName *C.char) uint32 {
 	}
 
 	// RetrieveCampaignObject()
-	client, ok := p.getRpcClient(sFunction_)
+	client, ok := p.getRpcClient(sFunction)
 	if !ok {
 		return 0
 	}
 
-	return client.SCORCOGetGFFSize(sVarName_, p.config.getTimeout())
+	return client.SCORCOGetGFFSize(sVarName, p.config.getTimeout())
 }
 
 // getGff called at the end of RetrieveCampaignObject
-func (p *rpcPlugin) getGff(sVarName *C.char, _ *C.uint8_t, _ C.size_t) []byte {
-	splits := strings.SplitN(C.GoString(sVarName), rpcGffVarNameSeparator, 2)
-	var sFunction_, sVarName_ string
-	if len(splits) == 2 {
-		sFunction_, sVarName_ = splits[0], splits[1]
-	} else {
-		return nil
-	}
-	log.Debugf("GetGFF(%s)", sVarName)
-
+func (p *rpcPlugin) getGff(sFunction, sVarName string, nParam2 int32) []byte {
 	// CallAction()
-	switch sFunction_ {
+	switch sFunction {
 	case rpcGetGff:
-		if v, found := p.globalCallActionResponse.Data[sVarName_]; found {
-			return v.GetGffValue()
+		if v, found := p.globalCallActionResponse.Data[sVarName]; found {
+			value := v.GetGffValue()
+			if nParam2 == rpcEndCallAction {
+				p.resetCallAction()
+			}
+
+			return value
 		}
 
 		return nil
 	}
 
 	// RetrieveCampaignObject()
-	client, ok := p.getRpcClient(sFunction_)
+	client, ok := p.getRpcClient(sFunction)
 	if !ok {
 		return nil
 	}
 
-	return client.SCORCOGetGFF(sVarName_, p.config.getTimeout())
+	return client.SCORCOGetGFF(sVarName, p.config.getTimeout())
 }
 
 // setGff called during StoreCampaignObject
-func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, gffDataSize C.size_t) {
-	gffDataSize_ := uint32(gffDataSize)
-	gffData_ := C.GoBytes(unsafe.Pointer(gffData), C.int(gffDataSize))
-	splits := strings.SplitN(C.GoString(sVarName), rpcGffVarNameSeparator, 3)
-	var sFunction_, sParam2_, sVarName_ string
-	if len(splits) == 2 {
-		sFunction_, sVarName_ = splits[0], splits[1]
-	} else if len(splits) == 3 {
-		sFunction_, sParam2_, sVarName_ = splits[0], splits[1], splits[2]
-	} else {
-		return
-	}
-	log.Debugf("SetGFFSize(%s, %x, %d)", sVarName, gffData, gffDataSize)
-
+func (p *rpcPlugin) setGff(sFunction, sVarName string, nParam2 int32, gffData []byte, gffDataSize uint32) {
 	// CallAction()
-	switch sFunction_ {
+	switch sFunction {
 	case rpcSetGff:
-		if nParam2_, err := strconv.Atoi(sParam2_); err == nil && int32(nParam2_) == rpcCallActionParam2ResetCallAction {
+		if nParam2 == rpcStartCallAction {
 			p.resetCallAction()
 		}
 
-		p.globalCallActionRequest.Params[sVarName_] = &pb.Value{
+		p.globalCallActionRequest.Params[sVarName] = &pb.Value{
 			ValueType: &pb.Value_GffValue{
-				GffValue: gffData_,
+				GffValue: gffData,
 			},
 		}
 
@@ -471,10 +422,10 @@ func (p *rpcPlugin) setGff(sVarName *C.char, gffData *C.uint8_t, gffDataSize C.s
 	}
 
 	// StoreCampaignObject()
-	client, ok := p.getRpcClient(sFunction_)
+	client, ok := p.getRpcClient(sFunction)
 	if !ok {
 		return
 	}
 
-	client.SCORCOSetGFF(sVarName_, gffData_, gffDataSize_, p.config.getTimeout())
+	client.SCORCOSetGFF(sVarName, gffData, gffDataSize, p.config.getTimeout())
 }

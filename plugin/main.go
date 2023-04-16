@@ -25,6 +25,8 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -36,6 +38,8 @@ const pluginContact string = "(c) 2021-2023 by ihatemundays (scottmunday84@gmail
 
 const logFilename string = "xp_rpc.log"
 const configFilename string = "xp_rpc.yml"
+
+const rpcPluginSeparator string = "!"
 
 var plugin *rpcPlugin // Singleton
 
@@ -107,27 +111,54 @@ func NWNXCPlugin_Delete(_ *C.void) {}
 
 //export NWNXCPlugin_GetInt
 func NWNXCPlugin_GetInt(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int) C.int {
-	return C.int(plugin.getInt(sFunction, sParam1, nParam2))
+	sFunction_ := C.GoString(sFunction)
+	sParam1_ := C.GoString(sParam1)
+	nParam2_ := int32(nParam2)
+	log.Debugf("NWNXGetInt(%s, %s, %d)", sFunction_, sParam1_, nParam2_)
+
+	return C.int(plugin.getInt(sFunction_, sParam1_, nParam2_))
 }
 
 //export NWNXCPlugin_SetInt
 func NWNXCPlugin_SetInt(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, nValue C.int) {
-	plugin.setInt(sFunction, sParam1, nParam2, nValue)
+	sFunction_ := C.GoString(sFunction)
+	sParam1_ := C.GoString(sParam1)
+	nParam2_ := int32(nParam2)
+	nValue_ := int32(nValue)
+	log.Debugf("NWNXSetInt(%s, %s, %d, %d)", sFunction_, sParam1_, nParam2_, nValue_)
+
+	plugin.setInt(sFunction_, sParam1_, nParam2_, nValue_)
 }
 
 //export NWNXCPlugin_GetFloat
 func NWNXCPlugin_GetFloat(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int) C.float {
-	return C.float(plugin.getFloat(sFunction, sParam1, nParam2))
+	sFunction_ := C.GoString(sFunction)
+	sParam1_ := C.GoString(sParam1)
+	nParam2_ := int32(nParam2)
+	log.Debugf("NWNXGetFloat(%s, %s, %d)", sFunction_, sParam1_, nParam2_)
+
+	return C.float(plugin.getFloat(sFunction_, sParam1_, nParam2_))
 }
 
 //export NWNXCPlugin_SetFloat
 func NWNXCPlugin_SetFloat(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, fValue C.float) {
-	plugin.setFloat(sFunction, sParam1, nParam2, fValue)
+	sFunction_ := C.GoString(sFunction)
+	sParam1_ := C.GoString(sParam1)
+	nParam2_ := int32(nParam2)
+	fValue_ := float32(fValue)
+	log.Debugf("NWNXSetFloat(%s, %s, %d, %d, %f)", sFunction_, sParam1_, nParam2_, fValue_)
+
+	plugin.setFloat(sFunction_, sParam1_, nParam2_, fValue_)
 }
 
 //export NWNXCPlugin_GetString
 func NWNXCPlugin_GetString(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, result *C.char, resultSize C.size_t) {
-	response := C.CString(plugin.getString(sFunction, sParam1, nParam2))
+	sFunction_ := C.GoString(sFunction)
+	sParam1_ := C.GoString(sParam1)
+	nParam2_ := int32(nParam2)
+	log.Debugf("NWNXGetString(%s, %s, %d)", sFunction_, sParam1_, nParam2_)
+
+	response := C.CString(plugin.getString(sFunction_, sParam1_, nParam2_))
 
 	// Get the pointer to the memory
 	responseSize := C.strlen(response)
@@ -140,17 +171,47 @@ func NWNXCPlugin_GetString(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int,
 
 //export NWNXCPlugin_SetString
 func NWNXCPlugin_SetString(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, sValue *C.char) {
-	plugin.setString(sFunction, sParam1, nParam2, sValue)
+	sFunction_ := C.GoString(sFunction)
+	sParam1_ := C.GoString(sParam1)
+	nParam2_ := int32(nParam2)
+	sValue_ := C.GoString(sValue)
+	log.Debugf("NWNXSetString(%s, %s, %d, %s)", sFunction_, sParam1_, nParam2_, sValue_)
+
+	plugin.setString(sFunction_, sParam1_, nParam2_, sValue_)
 }
 
 //export NWNXCPlugin_GetGFFSize
 func NWNXCPlugin_GetGFFSize(_ *C.void, sVarName *C.char) C.size_t {
-	return C.size_t(plugin.getGffSize(sVarName))
+	sFunction_, sVarName_, sParam2_, nParam2_ := "", C.GoString(sVarName), "", rpcCallActionParam2Default
+	splits := strings.SplitN(C.GoString(sVarName), rpcPluginSeparator, 3)
+	if len(splits) == 2 {
+		sFunction_, sVarName_ = splits[0], splits[1]
+	} else if len(splits) == 3 {
+		sFunction_, sParam2_, sVarName_ = splits[0], splits[1], splits[2]
+	}
+	if v, err := strconv.Atoi(sParam2_); err == nil {
+		nParam2_ = int32(v)
+	}
+	log.Debugf("GetGFFSize(%s, %s, %d)", sFunction_, sVarName_, nParam2_)
+
+	return C.size_t(plugin.getGffSize(sFunction_, sVarName_, nParam2_))
 }
 
 //export NWNXCPlugin_GetGFF
 func NWNXCPlugin_GetGFF(_ *C.void, sVarName *C.char, result *C.uint8_t, resultSize C.size_t) {
-	response := plugin.getGff(sVarName, result, resultSize)
+	sFunction_, sVarName_, sParam2_, nParam2_ := "", C.GoString(sVarName), "", rpcCallActionParam2Default
+	splits := strings.SplitN(C.GoString(sVarName), rpcPluginSeparator, 3)
+	if len(splits) == 2 {
+		sFunction_, sVarName_ = splits[0], splits[1]
+	} else if len(splits) == 3 {
+		sFunction_, sParam2_, sVarName_ = splits[0], splits[1], splits[2]
+	}
+	if v, err := strconv.Atoi(sParam2_); err == nil {
+		nParam2_ = int32(v)
+	}
+	log.Debugf("GetGFF(%s, %s, %d)", sFunction_, sVarName_, nParam2_)
+
+	response := plugin.getGff(sFunction_, sVarName_, nParam2_)
 	if response == nil {
 		log.Error("Response is null")
 
@@ -173,7 +234,21 @@ func NWNXCPlugin_GetGFF(_ *C.void, sVarName *C.char, result *C.uint8_t, resultSi
 
 //export NWNXCPlugin_SetGFF
 func NWNXCPlugin_SetGFF(_ *C.void, sVarName *C.char, gffData *C.uint8_t, gffDataSize C.size_t) {
-	plugin.setGff(sVarName, gffData, gffDataSize)
+	sFunction_, sVarName_, sParam2_, nParam2_ := "", C.GoString(sVarName), "", rpcCallActionParam2Default
+	gffDataSize_ := uint32(gffDataSize)
+	gffData_ := C.GoBytes(unsafe.Pointer(gffData), C.int(gffDataSize))
+	splits := strings.SplitN(C.GoString(sVarName), rpcPluginSeparator, 3)
+	if len(splits) == 2 {
+		sFunction_, sVarName_ = splits[0], splits[1]
+	} else if len(splits) == 3 {
+		sFunction_, sParam2_, sVarName_ = splits[0], splits[1], splits[2]
+	}
+	if v, err := strconv.Atoi(sParam2_); err == nil {
+		nParam2_ = int32(v)
+	}
+	log.Debugf("SetGFFSize(%s, %s, %d, %x, %d)", sFunction_, sVarName_, nParam2_, gffData_, gffDataSize_)
+
+	plugin.setGff(sFunction_, sVarName_, nParam2_, gffData_, gffDataSize_)
 }
 
 func main() {}
