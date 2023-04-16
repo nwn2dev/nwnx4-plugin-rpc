@@ -16,7 +16,8 @@ const string RPC_RESET_CALL_ACTION = "RPC_RESET_CALL_ACTION_";
 const string RPC_CALL_ACTION = "RPC_CALL_ACTION_";
 
 const int RPC_CALL_ACTION_PARAM_2_DEFAULT = -1;
-const int RPC_CALL_ACTION_PARAM_2_RESET_CALL_ACTION = 1;
+const int RPC_START_CALL_ACTION = 1;
+const int RPC_END_CALL_ACTION = 2;
 
 // CallAction
 void RPCResetCallAction();

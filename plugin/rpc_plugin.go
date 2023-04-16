@@ -170,7 +170,7 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 string, nParam2 int32) int32 {
 	case rpcGetBool:
 		if v, found := p.globalCallActionResponse.Data[sParam1]; found {
 			value := v.GetBValue()
-			if nParam2 == rpcStartCallAction {
+			if nParam2 == rpcEndCallAction {
 				p.resetCallAction()
 			}
 			if value {
