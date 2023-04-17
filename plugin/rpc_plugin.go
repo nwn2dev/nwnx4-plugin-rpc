@@ -157,28 +157,31 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 string, nParam2 int32) int32 {
 	// CallAction()
 	switch sFunction {
 	case rpcGetInt:
-		if v, found := p.globalCallActionResponse.Data[sParam1]; found {
-			value := v.GetNValue()
-			if nParam2 == rpcEndCallAction {
-				p.resetCallAction()
-			}
-
-			return value
+		var value int32 = 0
+		v, found := p.globalCallActionResponse.Data[sParam1]
+		if found {
+			value = v.GetNValue()
 		}
 
-		return 0
+		if nParam2 == rpcEndCallAction {
+			p.resetCallAction()
+		}
+
+		return value
 	case rpcGetBool:
-		if v, found := p.globalCallActionResponse.Data[sParam1]; found {
-			value := v.GetBValue()
-			if nParam2 == rpcEndCallAction {
-				p.resetCallAction()
-			}
-			if value {
-				return 1
+		var value int32 = 0
+		v, found := p.globalCallActionResponse.Data[sParam1]
+		if found {
+			if v.GetBValue() {
+				value = 1
 			}
 		}
 
-		return 0
+		if nParam2 == rpcEndCallAction {
+			p.resetCallAction()
+		}
+
+		return value
 	}
 
 	// NWNXGetInt()
@@ -234,16 +237,17 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 string, nParam2 int32) float32 {
 	// CallAction()
 	switch sFunction {
 	case rpcGetFloat:
-		if v, found := p.globalCallActionResponse.Data[sParam1]; found {
-			value := v.GetFValue()
-			if nParam2 == rpcEndCallAction {
-				p.resetCallAction()
-			}
-
-			return value
+		var value float32 = 0.0
+		v, found := p.globalCallActionResponse.Data[sParam1]
+		if found {
+			value = v.GetFValue()
 		}
 
-		return 0.0
+		if nParam2 == rpcEndCallAction {
+			p.resetCallAction()
+		}
+
+		return value
 	}
 
 	// NWNXGetFloat()
@@ -287,16 +291,17 @@ func (p *rpcPlugin) getString(sFunction, sParam1 string, nParam2 int32) string {
 	// CallAction()
 	switch sFunction {
 	case rpcGetString:
-		if v, found := p.globalCallActionResponse.Data[sParam1]; found {
-			value := v.GetSValue()
-			if nParam2 == rpcEndCallAction {
-				p.resetCallAction()
-			}
-
-			return value
+		var value string = ""
+		v, found := p.globalCallActionResponse.Data[sParam1]
+		if found {
+			value = v.GetSValue()
 		}
 
-		return ""
+		if nParam2 == rpcEndCallAction {
+			p.resetCallAction()
+		}
+
+		return value
 	}
 
 	// NWNXGetString()
@@ -382,16 +387,17 @@ func (p *rpcPlugin) getGff(sFunction, sVarName string, nParam2 int32) []byte {
 	// CallAction()
 	switch sFunction {
 	case rpcGetGff:
-		if v, found := p.globalCallActionResponse.Data[sVarName]; found {
-			value := v.GetGffValue()
-			if nParam2 == rpcEndCallAction {
-				p.resetCallAction()
-			}
-
-			return value
+		var value []byte = nil
+		v, found := p.globalCallActionResponse.Data[sVarName]
+		if found {
+			value = v.GetGffValue()
 		}
 
-		return nil
+		if nParam2 == rpcEndCallAction {
+			p.resetCallAction()
+		}
+
+		return value
 	}
 
 	// RetrieveCampaignObject()
