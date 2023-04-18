@@ -1,5 +1,0 @@
-server:
-  log:
-    logLevel: info
-clients:
-  service: localhost:3000

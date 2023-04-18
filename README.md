@@ -1,95 +1,28 @@
 # NWNX4 RPC Plugin
 
-A modern RPC plugin for NWNX4.
+NWNX4 RPC is a plugin for NWNX4 and Neverwinter Nights 2 (NWN2) game server through a set of remote procedure calls (RPC) to external applications. This allows developers to create custom functionality for NWN2 servers using services written in any language supported by gRPC, such as C++, C#, Python, or JavaScript.
 
-## Overview
-
-xp_rpc is a plugin that allows high performance RPC communication between an NWN2 server and any set of microservices. A
-microservice can be built in any supported language of both gRPC and Protocol Buffers.
-
-## Purpose
+## Features
 
 ![xp_rpc Concept Chart](docs/assets/xp_rpc-concept.svg)
 
-Previously any plugin developed for NWNX4 would be a Windows x86 C++ DLL. This C++ DLL would have a core plugin class:
-a child class of the parent class. With the advent of the new ABI interface, plugins expand the capability of supported
-plugins to anything that can be developed into a C library, but still targeting the Windows x86 architecture.
+- **Easy-to-use**: NWNX4 RPC provides a simple and intuitive approach to interacting with external applications, making it easy for developers to implement custom functionality in their NWN2 servers.
+- **Cross-platform support**: NWNX4 RPC is designed to work with services on multiple platforms, including Windows, Linux, and macOS, allowing developers to use it in various environments. The only constant is HTTP/2.
+- **Plugin integration**: NWNX4 RPC is designed to be integrated with other NWNX4 plugins seamlessly, providing a straightforward way to add custom functionality to NWN2 servers.
+- **Language-agnostic**: NWNX4 RPC does not restrict the language used for writing plugins, allowing developers to use their preferred programming language.
+- **Fault-tolerant**: NWNX4 has failover protections. Start and restart external applications without worry about the state of the NWN2 game server.
 
-Plugins were further designed with a domain-oriented approach (i.e. data, health, system). The xp_rpc plugin
-potentially allows a more service-oriented approach. All domains (authentication, data, etc.) can now exist inside a
-scalable, distributable, performant microservice running on practically any environment fully (or partially) decoupled
-from the host itself.
+## Installation
 
-## gRPC
+1. Download the latest release of NWNX4 Plugin RPC from the [GitHub repository](https://github.com/nwn2dev/nwnx4-plugin-rpc/releases).
+2. Extract the contents of the release archive into the `plugins` folder of your NWNX4 user directory.
+3. Configure the plugin by modifying the `NWNX.ini` file in your NWN2 server installation directory, following the instructions provided in the plugin's documentation.
+4. Modify any xp_rpc settings in xp_rpc.yml, placed in the root of your NWNX4 user directory.
+5. Restart your NWNX4/NWN2 server to load the plugin.
 
-![gRPC Concept Chart](docs/assets/grpc-concept.svg)
+## Usage
 
-gRPC with protobufs allow an efficient, fast and secure approach to data contract interfaces. To read more about gRPC
-and its capabilities, go [here](https://grpc.io).
-
-## How Does It Work
-
-The plugin uses a handful of protobuf messages and services to build a data contract between itself and the service. A
-microservice can then be developed in any supported language with a thorough definition of the service implementation. A
-YAML configuration should then be manually set with the list of the service names and their respective paths. With the
-NWNX4 application running with the xp_rpc plugin, the application is ready to transmit requests to the microservice.
-
-All that will be left is to send requests through the module using NWScript.
-
-## Use
-
-1. Include the `include/nwnx_rpc.nss` file into your module.
-2. All 6 base NWNX* functions including the 2 RCO/SCO functions are available for use.
-
-```NWScript
-int RPCGetInt(string sClient, string sParam1);
-void RPCSetInt(string sClient, string sParam1, int nValue);
-
-bool RPCGetBool(string sClient, string sParam1);
-void RPCSetBool(string sClient, string sParam1, bool bValue);
-
-float RPCGetFloat(string sClient, string sParam1);
-void RPCSetFloat(string sClient, string sParam1, float fValue);
-
-string RPCGetString(string sClient, string sParam1);
-void RPCSetString(string sClient, string sParam1, string sValue);
-
-object RPCRetrieveCampaignObject(string client, string sVarName, object oObject);
-int RPCStoreCampaignObject(string sClient, string sVarName, object oObject); 
-```
-
-3. Build a microservice to handle the requests.
-
-## Configuration
-
-Clients are connections from the RPC plugin to that of the services. To setup your xp_rpc plugin to bind to the client
-on startup, you create a YAML configuration `xp_rpc.yml` at the root of your NWNX4 path. In the previous example, "
-clientName" is the unique identifier to the microservice. What follows is a YAML configuration example:
-
-```yaml
-server:
-  log:
-    logLevel: debug
-clients:
-  clientName: localhost:3000
-```
-
-| Setting              | Description                                                                                          |
-|----------------------|------------------------------------------------------------------------------------------------------|
-| server:log:logLevel  | A string representation of the log level you wish to use (default: info)                             |
-| clients[key]         | Key is the client name and how you call it through NWN 2; the value is the URL route to the service. |
-
-## Microservices
-
-Microservices are the real power behind this plugin. They can be developed in any architecture and many languages.
-
-### Building your Microservice
-
-Official support for all the gRPC programming languages can be found [here](https://grpc.io/docs/#official-support).
-
-#### Requirements
-
-Each language requires both the following, so you can compile the protobufs for your application:
+To create an external application, you will need to run `protoc` and build the appropriate files necessary to interact with the plugin.
 
 * [Protocol Buffers](https://developers.google.com/protocol-buffers/docs/downloads)
 * gRPC (per language):
@@ -105,10 +38,6 @@ Each language requires both the following, so you can compile the protobufs for 
     * [Python](https://grpc.io/docs/languages/python/)
     * [Ruby](https://grpc.io/docs/languages/ruby/)
 
-Some other languages are unofficially supported. They are available, but require more setup.
-
-#### Use
-
 Once you have installed your requirements, building your protobufs are easy. For example, if you use Go, the following
 bash CLI command will develop your Go files.
 
@@ -119,41 +48,26 @@ protoc
   --go-grpc_out=../some_go_project/proto
 ```
 
-Replace go_ with the language you wish to use (java_, cpp_, etc.) and the *_out value with the location you wish to
-place your built files.
+Replace go_ with the language you wish to use (java_, cpp_, etc.) and the *_out value with the location you wish to place your built files.
 
-From your project folder for your microservice, include your files into your application and create a service using the
-documentation mentioned above. For our example, we would build a service like so:
+With a created external application, configure your xp_rpc settings for the client from the xp_rpc.yml file.
 
-```go
-type rpcServer struct {
-    pb.UnimplementedCallServiceServer
-}
-
-func (s *rpcServer) Call(ctx context.Context, in *pb.CallRequest) (*pb.CallResponse, error) {
-    ...
-}
+```yaml
+log:
+  logLevel: info
+perClient:
+  retries: 3
+  delay: 5  # In seconds
+  timeout: 30  # In seconds
+clients:
+  service: localhost:3000
 ```
 
-*pb* is an alias for the protobuf package. You can name this whatever makes sense to you.
+In this example, there's an external application/client named "service" with a URL of "localhost:3000". Any requests to "service" in NWScript will be delivered to this client.
 
-The CallRequest contains all parameters provided with a key set through the 4 set functions listed above. This can be as
-many parameters as you want and how complex you want.
+## Contributing
 
-The CallResponse contains all values returned with a key set through the 4 get functions listed above. This can be as
-many values as you want and how complex you want.
+NWNX4 Plugin RPC is an open-source project, and contributions are welcome! If you would like to contribute to the project, you can do so by:
 
-Any of the following types are available either on the request or the response.
-
-* Boolean
-* Integer (32-bit)
-* Float (32-bit)
-* String (ASCII)
-* GFF File (in bytes)
-
-You might be wondering, then how do I tell it to send a request to my microservice? In other words, how do I call a
-remote procedure? Easy. Set functions setup a request (if not set);
-get functions send the call and return the result. Once you set variables on the client again, you reset the process.
-It's quite simple, but quite powerful.
-
-Happy coding!
+- Reporting bugs or issues in the [GitHub issue tracker](https://github.com/nwn2dev/nwnx4-plugin-rpc/issues).
+- Submitting feature requests or suggestions in the [GitHub issue tracker](https://github.com/nwn2dev

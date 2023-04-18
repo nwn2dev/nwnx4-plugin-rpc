@@ -1,0 +1,35 @@
+syntax = 'proto3';
+
+option go_package = "plugin/proto";
+
+package NWNX4.RPC;
+
+service SCORCOService {
+  rpc SCORCOGetGFFSize(SCORCOGetGFFSizeRequest) returns (SCORCOGetGFFSizeResponse);
+  rpc SCORCOGetGFF(SCORCOGetGFFRequest) returns (SCORCOGetGFFResponse);
+  rpc SCORCOSetGFF(SCORCOSetGFFRequest) returns (SCORCOSetGFFResponse);
+}
+
+message SCORCOGetGFFSizeRequest {
+  string sVarName = 1;
+}
+
+message SCORCOGetGFFSizeResponse {
+  uint32 size = 1;
+}
+
+message SCORCOGetGFFRequest {
+  string sVarName = 1;
+}
+
+message SCORCOGetGFFResponse {
+  bytes gffData = 1;
+}
+
+message SCORCOSetGFFRequest {
+  string sVarName = 1;
+  bytes gffData = 2;
+  uint32 gffDataSize = 3;
+}
+
+message SCORCOSetGFFResponse {}

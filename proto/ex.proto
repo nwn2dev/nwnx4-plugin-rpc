@@ -1,0 +1,28 @@
+syntax = 'proto3';
+
+option go_package = "plugin/proto";
+
+package NWNX4.RPC;
+
+service ExService {
+  rpc ExBuildGeneric(ExBuildGenericRequest) returns (ExBuildGenericResponse);
+}
+
+message Value {
+  oneof valueType {
+    bool bValue = 1;
+    int32 nValue = 2;
+    float fValue = 3;
+    string sValue = 4;
+    bytes gffValue = 5;
+  }
+}
+
+message ExBuildGenericRequest {
+  string action = 1;
+  map<string, Value> params = 2;
+}
+
+message ExBuildGenericResponse {
+  map<string, Value> data = 1;
+}

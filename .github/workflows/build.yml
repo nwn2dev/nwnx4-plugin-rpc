@@ -1,4 +1,4 @@
-name: NWNX4-plugins-src
+name: NWNX4-plugins-xp_rpc
 on: [push, pull_request]
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
           CGO_ENABLED: 1
           CC: i686-w64-mingw32-gcc
           CXX: i686-w64-mingw32-g++
-        working-directory: src
+        working-directory: plugin
         run: go build -ldflags '-s -w' -o ../dist/xp_rpc.dll -buildmode=c-shared
 
       - name: Copy all necessary files into distribution
@@ -40,7 +40,7 @@ jobs:
         run: |
           cp -r ./include ./dist
           cp -r ./proto ./dist
-          cp ./src/xp_rpc.yml ./dist
+          cp ./plugin/xp_rpc.yml ./dist
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
@@ -86,5 +86,5 @@ jobs:
         with:
           name: ${{ steps.rel_info.outputs.tag }}
           prerelease: ${{ steps.rel_info.outputs.prerelease }}
-          files: src.zip
+          files: xp_rpc.zip
           draft: true

@@ -1,0 +1,71 @@
+syntax = 'proto3';
+
+option go_package = "plugin/proto";
+
+package NWNX4.RPC;
+
+service NWNXService {
+  rpc NWNXGetInt(NWNXGetIntRequest) returns (NWNXGetIntResponse);
+  rpc NWNXSetInt(NWNXSetIntRequest) returns (NWNXSetIntResponse);
+  rpc NWNXGetFloat(NWNXGetFloatRequest) returns (NWNXGetFloatResponse);
+  rpc NWNXSetFloat(NWNXSetFloatRequest) returns (NWNXSetFloatResponse);
+  rpc NWNXGetString(NWNXGetStringRequest) returns (NWNXGetStringResponse);
+  rpc NWNXSetString(NWNXSetStringRequest) returns (NWNXSetStringResponse);
+}
+
+message NWNXGetIntRequest {
+  string sFunction = 1;
+  string sParam1 = 2;
+  int32 nParam2 = 3;
+}
+
+message NWNXGetIntResponse {
+  int32 value = 1;
+}
+
+message NWNXSetIntRequest {
+  string sFunction = 1;
+  string sParam1 = 2;
+  int32 nParam2 = 3;
+  int32 nValue = 4;
+}
+
+message NWNXSetIntResponse {}
+
+message NWNXGetFloatRequest {
+  string sFunction = 1;
+  string sParam1 = 2;
+  int32 nParam2 = 3;
+}
+
+message NWNXGetFloatResponse {
+  float value = 1;
+}
+
+message NWNXSetFloatRequest {
+  string sFunction = 1;
+  string sParam1 = 2;
+  int32 nParam2 = 3;
+  float fValue = 4;
+}
+
+message NWNXSetFloatResponse {}
+
+message NWNXGetStringRequest {
+  string sFunction = 1;
+  string sParam1 = 2;
+  int32 nParam2 = 3;
+}
+
+message NWNXGetStringResponse {
+  string value = 1;
+}
+
+message NWNXSetStringRequest {
+  string sFunction = 1;
+  string sParam1 = 2;
+  int32 nParam2 = 3;
+  string sValue = 4;
+}
+
+message NWNXSetStringResponse {}

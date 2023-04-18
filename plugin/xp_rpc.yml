@@ -1,0 +1,8 @@
+log:
+  logLevel: info
+perClient:
+  retries: 3
+  delay: 5  # In seconds
+  timeout: 30  # In seconds
+clients:
+  service: localhost:3000
