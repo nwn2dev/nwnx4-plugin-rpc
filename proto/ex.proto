@@ -4,8 +4,8 @@ option go_package = "plugin/proto";
 
 package NWNX4.RPC;
 
-service ActionService {
-  rpc CallAction(CallActionRequest) returns (CallActionResponse);
+service ExService {
+  rpc ExBuildGeneric(ExBuildGenericRequest) returns (ExBuildGenericResponse);
 }
 
 message Value {
@@ -18,11 +18,11 @@ message Value {
   }
 }
 
-message CallActionRequest {
+message ExBuildGenericRequest {
   string action = 1;
   map<string, Value> params = 2;
 }
 
-message CallActionResponse {
+message ExBuildGenericResponse {
   map<string, Value> data = 1;
 }

@@ -12,8 +12,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-const rpcResetCallAction string = "RPC_RESET_CALL_ACTION_"
-const rpcCallAction string = "RPC_CALL_ACTION_"
+const rpcResetBuildGeneric string = "RPC_RESET_BUILD_GENERIC_"
+const rpcBuildGeneric string = "RPC_BUILD_GENERIC_"
 
 const rpcGetInt string = "RPC_GET_INT_"
 const rpcSetInt string = "RPC_SET_INT_"
@@ -27,35 +27,35 @@ const rpcGetGff string = "RPC_GET_GFF_"
 const rpcSetGff string = "RPC_SET_GFF_"
 
 const rpcParam2Default int32 = 0
-const rpcStartCallAction int32 = 1
-const rpcEndCallAction int32 = 2
+const rpcStartBuildGeneric int32 = 1
+const rpcEndBuildGeneric int32 = 2
 
 type rpcPlugin struct {
-	config                   rpcConfig
-	clients                  map[string]*rpcClient
-	globalCallActionRequest  *pb.CallActionRequest
-	globalCallActionResponse *pb.CallActionResponse
+	config                       rpcConfig
+	clients                      map[string]*rpcClient
+	globalExBuildGenericRequest  *pb.ExBuildGenericRequest
+	globalExBuildGenericResponse *pb.ExBuildGenericResponse
 }
 
 // newRpcPlugin builds and returns a new RPC plugin
 func newRpcPlugin() *rpcPlugin {
 	return &rpcPlugin{
-		config:                   rpcConfig{},
-		clients:                  make(map[string]*rpcClient),
-		globalCallActionRequest:  newCallActionRequest(),
-		globalCallActionResponse: newCallActionResponse(),
+		config:                       rpcConfig{},
+		clients:                      make(map[string]*rpcClient),
+		globalExBuildGenericRequest:  newExBuildGenericRequest(),
+		globalExBuildGenericResponse: newExBuildGenericResponse(),
 	}
 }
 
-func newCallActionRequest() *pb.CallActionRequest {
-	return &pb.CallActionRequest{
+func newExBuildGenericRequest() *pb.ExBuildGenericRequest {
+	return &pb.ExBuildGenericRequest{
 		Action: "",
 		Params: make(map[string]*pb.Value),
 	}
 }
 
-func newCallActionResponse() *pb.CallActionResponse {
-	return &pb.CallActionResponse{
+func newExBuildGenericResponse() *pb.ExBuildGenericResponse {
+	return &pb.ExBuildGenericResponse{
 		Data: make(map[string]*pb.Value),
 	}
 }
@@ -93,9 +93,9 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 			isValid:             false,
 			name:                name,
 			url:                 url,
+			exServiceClient:     nil,
 			nwnxServiceClient:   nil,
 			scorcoServiceClient: nil,
-			actionServiceClient: nil,
 		}
 
 		return
@@ -105,9 +105,9 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 		isValid:             true,
 		name:                name,
 		url:                 url,
+		exServiceClient:     pb.NewExServiceClient(conn),
 		nwnxServiceClient:   pb.NewNWNXServiceClient(conn),
 		scorcoServiceClient: pb.NewSCORCOServiceClient(conn),
-		actionServiceClient: pb.NewActionServiceClient(conn),
 	}
 
 	log.Infof("Established client connection and stubs: %s@%s", name, url)
@@ -150,38 +150,38 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 }
 
 // Reset the call action request and response
-func (p *rpcPlugin) resetCallAction() {
-	p.globalCallActionRequest = newCallActionRequest()
-	p.globalCallActionResponse = newCallActionResponse()
+func (p *rpcPlugin) resetBuildGeneric() {
+	p.globalExBuildGenericRequest = newExBuildGenericRequest()
+	p.globalExBuildGenericResponse = newExBuildGenericResponse()
 }
 
 // getInt the body of the NWNXGetInt() call
 func (p *rpcPlugin) getInt(sFunction, sParam1 string, nParam2 int32) int32 {
-	// CallAction()
+	// ExBuildGeneric()
 	switch sFunction {
 	case rpcGetInt:
 		var value int32 = 0
-		v, found := p.globalCallActionResponse.Data[sParam1]
+		v, found := p.globalExBuildGenericResponse.Data[sParam1]
 		if found {
 			value = v.GetNValue()
 		}
 
-		if nParam2 == rpcEndCallAction {
-			p.resetCallAction()
+		if nParam2 == rpcEndBuildGeneric {
+			p.resetBuildGeneric()
 		}
 
 		return value
 	case rpcGetBool:
 		var value int32 = 0
-		v, found := p.globalCallActionResponse.Data[sParam1]
+		v, found := p.globalExBuildGenericResponse.Data[sParam1]
 		if found {
 			if v.GetBValue() {
 				value = 1
 			}
 		}
 
-		if nParam2 == rpcEndCallAction {
-			p.resetCallAction()
+		if nParam2 == rpcEndBuildGeneric {
+			p.resetBuildGeneric()
 		}
 
 		return value
@@ -198,14 +198,14 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 string, nParam2 int32) int32 {
 
 // setInt the body of the NWNXSetInt() call
 func (p *rpcPlugin) setInt(sFunction, sParam1 string, nParam2, nValue int32) {
-	// CallAction()
+	// ExBuildGeneric()
 	switch sFunction {
 	case rpcSetInt:
-		if nParam2 == rpcStartCallAction {
-			p.resetCallAction()
+		if nParam2 == rpcStartBuildGeneric {
+			p.resetBuildGeneric()
 		}
 
-		p.globalCallActionRequest.Params[sParam1] = &pb.Value{
+		p.globalExBuildGenericRequest.Params[sParam1] = &pb.Value{
 			ValueType: &pb.Value_NValue{
 				NValue: nValue,
 			},
@@ -213,11 +213,11 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 string, nParam2, nValue int32) {
 
 		return
 	case rpcSetBool:
-		if nParam2 == rpcStartCallAction {
-			p.resetCallAction()
+		if nParam2 == rpcStartBuildGeneric {
+			p.resetBuildGeneric()
 		}
 
-		p.globalCallActionRequest.Params[sParam1] = &pb.Value{
+		p.globalExBuildGenericRequest.Params[sParam1] = &pb.Value{
 			ValueType: &pb.Value_BValue{
 				BValue: nValue != 0,
 			},
@@ -237,17 +237,17 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 string, nParam2, nValue int32) {
 
 // getFloat the body of the NWNXGetFloat() call
 func (p *rpcPlugin) getFloat(sFunction, sParam1 string, nParam2 int32) float32 {
-	// CallAction()
+	// ExBuildGeneric()
 	switch sFunction {
 	case rpcGetFloat:
 		var value float32 = 0.0
-		v, found := p.globalCallActionResponse.Data[sParam1]
+		v, found := p.globalExBuildGenericResponse.Data[sParam1]
 		if found {
 			value = v.GetFValue()
 		}
 
-		if nParam2 == rpcEndCallAction {
-			p.resetCallAction()
+		if nParam2 == rpcEndBuildGeneric {
+			p.resetBuildGeneric()
 		}
 
 		return value
@@ -264,14 +264,14 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 string, nParam2 int32) float32 {
 
 // setFloat the body of the NWNXSetFloat() call
 func (p *rpcPlugin) setFloat(sFunction, sParam1 string, nParam2 int32, fValue float32) {
-	// CallAction()
+	// ExBuildGeneric()
 	switch sFunction {
 	case rpcSetFloat:
-		if nParam2 == rpcStartCallAction {
-			p.resetCallAction()
+		if nParam2 == rpcStartBuildGeneric {
+			p.resetBuildGeneric()
 		}
 
-		p.globalCallActionRequest.Params[sParam1] = &pb.Value{
+		p.globalExBuildGenericRequest.Params[sParam1] = &pb.Value{
 			ValueType: &pb.Value_FValue{
 				FValue: fValue,
 			},
@@ -291,17 +291,17 @@ func (p *rpcPlugin) setFloat(sFunction, sParam1 string, nParam2 int32, fValue fl
 
 // getString the body of the NWNXGetString() call
 func (p *rpcPlugin) getString(sFunction, sParam1 string, nParam2 int32) string {
-	// CallAction()
+	// ExBuildGeneric()
 	switch sFunction {
 	case rpcGetString:
 		var value string = ""
-		v, found := p.globalCallActionResponse.Data[sParam1]
+		v, found := p.globalExBuildGenericResponse.Data[sParam1]
 		if found {
 			value = v.GetSValue()
 		}
 
-		if nParam2 == rpcEndCallAction {
-			p.resetCallAction()
+		if nParam2 == rpcEndBuildGeneric {
+			p.resetBuildGeneric()
 		}
 
 		return value
@@ -318,25 +318,25 @@ func (p *rpcPlugin) getString(sFunction, sParam1 string, nParam2 int32) string {
 
 // setString the body of the NWNXSetString() call
 func (p *rpcPlugin) setString(sFunction, sParam1 string, nParam2 int32, sValue string) {
-	// CallAction()
+	// ExBuildGeneric()
 	switch sFunction {
 	case rpcSetString:
-		if nParam2 == rpcStartCallAction {
-			p.resetCallAction()
+		if nParam2 == rpcStartBuildGeneric {
+			p.resetBuildGeneric()
 		}
 
-		p.globalCallActionRequest.Params[sParam1] = &pb.Value{
+		p.globalExBuildGenericRequest.Params[sParam1] = &pb.Value{
 			ValueType: &pb.Value_SValue{
 				SValue: sValue,
 			},
 		}
 
 		return
-	case rpcResetCallAction:
-		p.resetCallAction()
+	case rpcResetBuildGeneric:
+		p.resetBuildGeneric()
 
 		return
-	case rpcCallAction:
+	case rpcBuildGeneric:
 		// sParam1_ holds the client identifier
 		client, ok := p.getRpcClient(sParam1)
 		if !ok {
@@ -344,12 +344,12 @@ func (p *rpcPlugin) setString(sFunction, sParam1 string, nParam2 int32, sValue s
 		}
 
 		// sValue_ contains the action
-		p.globalCallActionRequest.Action = sValue
-		response, err := client.callAction(p.globalCallActionRequest, p.config.getTimeout())
-		p.resetCallAction()
+		p.globalExBuildGenericRequest.Action = sValue
+		response, err := client.buildGeneric(p.globalExBuildGenericRequest, p.config.getTimeout())
+		p.resetBuildGeneric()
 
 		if err == nil {
-			*p.globalCallActionResponse = *response
+			*p.globalExBuildGenericResponse = *response
 		}
 
 		return
@@ -366,10 +366,10 @@ func (p *rpcPlugin) setString(sFunction, sParam1 string, nParam2 int32, sValue s
 
 // getGffSize called at the start of RetrieveCampaignObject
 func (p *rpcPlugin) getGffSize(sFunction, sVarName string, _ int32) uint32 {
-	// CallAction()
+	// ExBuildGeneric()
 	switch sFunction {
 	case rpcGetGff:
-		if v, found := p.globalCallActionResponse.Data[sVarName]; found {
+		if v, found := p.globalExBuildGenericResponse.Data[sVarName]; found {
 			return uint32(len(v.GetGffValue()))
 		}
 
@@ -387,17 +387,17 @@ func (p *rpcPlugin) getGffSize(sFunction, sVarName string, _ int32) uint32 {
 
 // getGff called at the end of RetrieveCampaignObject
 func (p *rpcPlugin) getGff(sFunction, sVarName string, nParam2 int32) []byte {
-	// CallAction()
+	// ExBuildGeneric()
 	switch sFunction {
 	case rpcGetGff:
 		var value []byte = nil
-		v, found := p.globalCallActionResponse.Data[sVarName]
+		v, found := p.globalExBuildGenericResponse.Data[sVarName]
 		if found {
 			value = v.GetGffValue()
 		}
 
-		if nParam2 == rpcEndCallAction {
-			p.resetCallAction()
+		if nParam2 == rpcEndBuildGeneric {
+			p.resetBuildGeneric()
 		}
 
 		return value
@@ -414,14 +414,14 @@ func (p *rpcPlugin) getGff(sFunction, sVarName string, nParam2 int32) []byte {
 
 // setGff called during StoreCampaignObject
 func (p *rpcPlugin) setGff(sFunction, sVarName string, nParam2 int32, gffData []byte, gffDataSize uint32) {
-	// CallAction()
+	// ExBuildGeneric()
 	switch sFunction {
 	case rpcSetGff:
-		if nParam2 == rpcStartCallAction {
-			p.resetCallAction()
+		if nParam2 == rpcStartBuildGeneric {
+			p.resetBuildGeneric()
 		}
 
-		p.globalCallActionRequest.Params[sVarName] = &pb.Value{
+		p.globalExBuildGenericRequest.Params[sVarName] = &pb.Value{
 			ValueType: &pb.Value_GffValue{
 				GffValue: gffData,
 			},

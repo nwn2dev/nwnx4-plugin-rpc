@@ -12,15 +12,15 @@ type rpcClient struct {
 	isValid             bool
 	name                string
 	url                 string
+	exServiceClient     pb.ExServiceClient
 	nwnxServiceClient   pb.NWNXServiceClient
 	scorcoServiceClient pb.SCORCOServiceClient
-	actionServiceClient pb.ActionServiceClient
 }
 
-func (c rpcClient) callAction(request *pb.CallActionRequest, timeout time.Duration) (*pb.CallActionResponse, error) {
+func (c rpcClient) buildGeneric(request *pb.ExBuildGenericRequest, timeout time.Duration) (*pb.ExBuildGenericResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	response, err := c.actionServiceClient.CallAction(ctx, request)
+	response, err := c.exServiceClient.ExBuildGeneric(ctx, request)
 
 	if err != nil {
 		c.isValid = false

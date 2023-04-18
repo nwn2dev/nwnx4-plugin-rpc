@@ -3,8 +3,8 @@ const string RPC_PLUGIN_ID = "RPC";
 
 const string RPC_PLUGIN_SEPARATOR = "\x0C";
 
-const string RPC_RESET_CALL_ACTION = "RPC_RESET_CALL_ACTION_";
-const string RPC_CALL_ACTION = "RPC_CALL_ACTION_";
+const string RPC_RESET_BUILD_GENERIC = "RPC_RESET_BUILD_GENERIC_";
+const string RPC_BUILD_GENERIC = "RPC_BUILD_GENERIC_";
 
 const string RPC_GET_INT = "RPC_GET_INT_";
 const string RPC_SET_INT = "RPC_SET_INT_";
@@ -18,12 +18,12 @@ const string RPC_GET_GFF = "RPC_GET_GFF_";
 const string RPC_SET_GFF = "RPC_SET_GFF_";
 
 const int RPC_PARAM_2_DEFAULT = 0;
-const int RPC_START_CALL_ACTION = 1;
-const int RPC_END_CALL_ACTION = 2;
+const int RPC_START_BUILD_GENERIC = 1;
+const int RPC_END_BUILD_GENERIC = 2;
 
 // CallAction
-void RPCResetCallActionEx();
-void RPCCallActionEx(string sClient, string sAction);
+void RPCResetBuildGenericEx();
+void RPCBuildGenericEx(string sClient, string sAction);
 int RPCGetIntEx(string sParam1, int nParam2 = RPC_PARAM_2_DEFAULT);
 void RPCSetIntEx(string sParam1, int nValue, int nParam2 = RPC_PARAM_2_DEFAULT);
 int RPCGetBoolEx(string sParam1, int nParam2 = RPC_PARAM_2_DEFAULT);
@@ -35,12 +35,12 @@ void RPCSetStringEx(string sParam1, string sValue, int nParam2 = RPC_PARAM_2_DEF
 object RPCRetrieveCampaignObjectEx(string sVarName, location coLocation, int nParam2 = RPC_PARAM_2_DEFAULT);
 int RPCStoreCampaignObjectEx(string sVarName, object oObject, int nParam2 = RPC_PARAM_2_DEFAULT);
 
-void RPCResetCallActionEx() {
-	NWNXSetString(RPC_PLUGIN_ID, RPC_RESET_CALL_ACTION, "", RPC_PARAM_2_DEFAULT, "");
+void RPCResetBuildGenericEx() {
+	NWNXSetString(RPC_PLUGIN_ID, RPC_RESET_BUILD_GENERIC, "", RPC_PARAM_2_DEFAULT, "");
 }
 
-void RPCCallActionEx(string sClient, string sAction) {
-	NWNXSetString(RPC_PLUGIN_ID, RPC_CALL_ACTION, sClient, RPC_PARAM_2_DEFAULT, sAction);
+void RPCBuildGenericEx(string sClient, string sAction) {
+	NWNXSetString(RPC_PLUGIN_ID, RPC_BUILD_GENERIC, sClient, RPC_PARAM_2_DEFAULT, sAction);
 }
 
 int RPCGetIntEx(string sParam1, int nParam2 = RPC_PARAM_2_DEFAULT) {
