@@ -247,7 +247,7 @@ func NWNXCPlugin_GetGFF(_ *C.void, sVarName *C.char, result *C.uint8_t, resultSi
 	}).Debug("SCORCOGetGFF()")
 
 	response := plugin.getGff(sFunction_, sVarName_, nParam2_)
-	if response == nil {
+	if response == nil || len(response) == 0 {
 		log.Error("GFF response is empty")
 
 		return
@@ -257,7 +257,7 @@ func NWNXCPlugin_GetGFF(_ *C.void, sVarName *C.char, result *C.uint8_t, resultSi
 	responseSize := C.size_t(len(response))
 	responsePtr := unsafe.Pointer(&response[0])
 	if resultSize < responseSize {
-		log.Errorf("%d response size is too large for the %d result size", uint32(responseSize), uint32(resultSize))
+		log.Errorf("GFF response size of %d is too large for the GFF result size of %d", uint32(responseSize), uint32(resultSize))
 
 		return
 	}
