@@ -22,12 +22,12 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NWNXServiceClient interface {
-	NWNXGetInt(ctx context.Context, in *NWNXGetIntRequest, opts ...grpc.CallOption) (*Int, error)
-	NWNXSetInt(ctx context.Context, in *NWNXSetIntRequest, opts ...grpc.CallOption) (*Void, error)
-	NWNXGetFloat(ctx context.Context, in *NWNXGetFloatRequest, opts ...grpc.CallOption) (*Float, error)
-	NWNXSetFloat(ctx context.Context, in *NWNXSetFloatRequest, opts ...grpc.CallOption) (*Void, error)
-	NWNXGetString(ctx context.Context, in *NWNXGetStringRequest, opts ...grpc.CallOption) (*String, error)
-	NWNXSetString(ctx context.Context, in *NWNXSetStringRequest, opts ...grpc.CallOption) (*Void, error)
+	NWNXGetInt(ctx context.Context, in *NWNXGetIntRequest, opts ...grpc.CallOption) (*NWNXGetIntResponse, error)
+	NWNXSetInt(ctx context.Context, in *NWNXSetIntRequest, opts ...grpc.CallOption) (*NWNXSetIntResponse, error)
+	NWNXGetFloat(ctx context.Context, in *NWNXGetFloatRequest, opts ...grpc.CallOption) (*NWNXGetFloatResponse, error)
+	NWNXSetFloat(ctx context.Context, in *NWNXSetFloatRequest, opts ...grpc.CallOption) (*NWNXSetFloatResponse, error)
+	NWNXGetString(ctx context.Context, in *NWNXGetStringRequest, opts ...grpc.CallOption) (*NWNXGetStringResponse, error)
+	NWNXSetString(ctx context.Context, in *NWNXSetStringRequest, opts ...grpc.CallOption) (*NWNXSetStringResponse, error)
 }
 
 type nWNXServiceClient struct {
@@ -38,8 +38,8 @@ func NewNWNXServiceClient(cc grpc.ClientConnInterface) NWNXServiceClient {
 	return &nWNXServiceClient{cc}
 }
 
-func (c *nWNXServiceClient) NWNXGetInt(ctx context.Context, in *NWNXGetIntRequest, opts ...grpc.CallOption) (*Int, error) {
-	out := new(Int)
+func (c *nWNXServiceClient) NWNXGetInt(ctx context.Context, in *NWNXGetIntRequest, opts ...grpc.CallOption) (*NWNXGetIntResponse, error) {
+	out := new(NWNXGetIntResponse)
 	err := c.cc.Invoke(ctx, "/NWNX4.RPC.NWNXService/NWNXGetInt", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -47,8 +47,8 @@ func (c *nWNXServiceClient) NWNXGetInt(ctx context.Context, in *NWNXGetIntReques
 	return out, nil
 }
 
-func (c *nWNXServiceClient) NWNXSetInt(ctx context.Context, in *NWNXSetIntRequest, opts ...grpc.CallOption) (*Void, error) {
-	out := new(Void)
+func (c *nWNXServiceClient) NWNXSetInt(ctx context.Context, in *NWNXSetIntRequest, opts ...grpc.CallOption) (*NWNXSetIntResponse, error) {
+	out := new(NWNXSetIntResponse)
 	err := c.cc.Invoke(ctx, "/NWNX4.RPC.NWNXService/NWNXSetInt", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -56,8 +56,8 @@ func (c *nWNXServiceClient) NWNXSetInt(ctx context.Context, in *NWNXSetIntReques
 	return out, nil
 }
 
-func (c *nWNXServiceClient) NWNXGetFloat(ctx context.Context, in *NWNXGetFloatRequest, opts ...grpc.CallOption) (*Float, error) {
-	out := new(Float)
+func (c *nWNXServiceClient) NWNXGetFloat(ctx context.Context, in *NWNXGetFloatRequest, opts ...grpc.CallOption) (*NWNXGetFloatResponse, error) {
+	out := new(NWNXGetFloatResponse)
 	err := c.cc.Invoke(ctx, "/NWNX4.RPC.NWNXService/NWNXGetFloat", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -65,8 +65,8 @@ func (c *nWNXServiceClient) NWNXGetFloat(ctx context.Context, in *NWNXGetFloatRe
 	return out, nil
 }
 
-func (c *nWNXServiceClient) NWNXSetFloat(ctx context.Context, in *NWNXSetFloatRequest, opts ...grpc.CallOption) (*Void, error) {
-	out := new(Void)
+func (c *nWNXServiceClient) NWNXSetFloat(ctx context.Context, in *NWNXSetFloatRequest, opts ...grpc.CallOption) (*NWNXSetFloatResponse, error) {
+	out := new(NWNXSetFloatResponse)
 	err := c.cc.Invoke(ctx, "/NWNX4.RPC.NWNXService/NWNXSetFloat", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -74,8 +74,8 @@ func (c *nWNXServiceClient) NWNXSetFloat(ctx context.Context, in *NWNXSetFloatRe
 	return out, nil
 }
 
-func (c *nWNXServiceClient) NWNXGetString(ctx context.Context, in *NWNXGetStringRequest, opts ...grpc.CallOption) (*String, error) {
-	out := new(String)
+func (c *nWNXServiceClient) NWNXGetString(ctx context.Context, in *NWNXGetStringRequest, opts ...grpc.CallOption) (*NWNXGetStringResponse, error) {
+	out := new(NWNXGetStringResponse)
 	err := c.cc.Invoke(ctx, "/NWNX4.RPC.NWNXService/NWNXGetString", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -83,8 +83,8 @@ func (c *nWNXServiceClient) NWNXGetString(ctx context.Context, in *NWNXGetString
 	return out, nil
 }
 
-func (c *nWNXServiceClient) NWNXSetString(ctx context.Context, in *NWNXSetStringRequest, opts ...grpc.CallOption) (*Void, error) {
-	out := new(Void)
+func (c *nWNXServiceClient) NWNXSetString(ctx context.Context, in *NWNXSetStringRequest, opts ...grpc.CallOption) (*NWNXSetStringResponse, error) {
+	out := new(NWNXSetStringResponse)
 	err := c.cc.Invoke(ctx, "/NWNX4.RPC.NWNXService/NWNXSetString", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -96,12 +96,12 @@ func (c *nWNXServiceClient) NWNXSetString(ctx context.Context, in *NWNXSetString
 // All implementations must embed UnimplementedNWNXServiceServer
 // for forward compatibility
 type NWNXServiceServer interface {
-	NWNXGetInt(context.Context, *NWNXGetIntRequest) (*Int, error)
-	NWNXSetInt(context.Context, *NWNXSetIntRequest) (*Void, error)
-	NWNXGetFloat(context.Context, *NWNXGetFloatRequest) (*Float, error)
-	NWNXSetFloat(context.Context, *NWNXSetFloatRequest) (*Void, error)
-	NWNXGetString(context.Context, *NWNXGetStringRequest) (*String, error)
-	NWNXSetString(context.Context, *NWNXSetStringRequest) (*Void, error)
+	NWNXGetInt(context.Context, *NWNXGetIntRequest) (*NWNXGetIntResponse, error)
+	NWNXSetInt(context.Context, *NWNXSetIntRequest) (*NWNXSetIntResponse, error)
+	NWNXGetFloat(context.Context, *NWNXGetFloatRequest) (*NWNXGetFloatResponse, error)
+	NWNXSetFloat(context.Context, *NWNXSetFloatRequest) (*NWNXSetFloatResponse, error)
+	NWNXGetString(context.Context, *NWNXGetStringRequest) (*NWNXGetStringResponse, error)
+	NWNXSetString(context.Context, *NWNXSetStringRequest) (*NWNXSetStringResponse, error)
 	mustEmbedUnimplementedNWNXServiceServer()
 }
 
@@ -109,22 +109,22 @@ type NWNXServiceServer interface {
 type UnimplementedNWNXServiceServer struct {
 }
 
-func (UnimplementedNWNXServiceServer) NWNXGetInt(context.Context, *NWNXGetIntRequest) (*Int, error) {
+func (UnimplementedNWNXServiceServer) NWNXGetInt(context.Context, *NWNXGetIntRequest) (*NWNXGetIntResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NWNXGetInt not implemented")
 }
-func (UnimplementedNWNXServiceServer) NWNXSetInt(context.Context, *NWNXSetIntRequest) (*Void, error) {
+func (UnimplementedNWNXServiceServer) NWNXSetInt(context.Context, *NWNXSetIntRequest) (*NWNXSetIntResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NWNXSetInt not implemented")
 }
-func (UnimplementedNWNXServiceServer) NWNXGetFloat(context.Context, *NWNXGetFloatRequest) (*Float, error) {
+func (UnimplementedNWNXServiceServer) NWNXGetFloat(context.Context, *NWNXGetFloatRequest) (*NWNXGetFloatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NWNXGetFloat not implemented")
 }
-func (UnimplementedNWNXServiceServer) NWNXSetFloat(context.Context, *NWNXSetFloatRequest) (*Void, error) {
+func (UnimplementedNWNXServiceServer) NWNXSetFloat(context.Context, *NWNXSetFloatRequest) (*NWNXSetFloatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NWNXSetFloat not implemented")
 }
-func (UnimplementedNWNXServiceServer) NWNXGetString(context.Context, *NWNXGetStringRequest) (*String, error) {
+func (UnimplementedNWNXServiceServer) NWNXGetString(context.Context, *NWNXGetStringRequest) (*NWNXGetStringResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NWNXGetString not implemented")
 }
-func (UnimplementedNWNXServiceServer) NWNXSetString(context.Context, *NWNXSetStringRequest) (*Void, error) {
+func (UnimplementedNWNXServiceServer) NWNXSetString(context.Context, *NWNXSetStringRequest) (*NWNXSetStringResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method NWNXSetString not implemented")
 }
 func (UnimplementedNWNXServiceServer) mustEmbedUnimplementedNWNXServiceServer() {}

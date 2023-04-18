@@ -115,7 +115,7 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 
 // getRpcClient will get an rpcClient by name
 func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
-	log.Infof("Getting client with name: %s", name)
+	log.Debugf("Getting client with name: %s", name)
 	rpcClient, exists := p.clients[name]
 
 	if !exists {
