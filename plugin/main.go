@@ -114,7 +114,11 @@ func NWNXCPlugin_GetInt(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int) C.
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
-	log.Debugf("NWNXGetInt(%s, %s, %d)", sFunction_, sParam1_, nParam2_)
+	log.WithFields(log.Fields{
+		"sFunction": sFunction_,
+		"sParam1":   sParam1_,
+		"nParam2":   nParam2_,
+	}).Debug("NWNXGetInt()")
 
 	return C.int(plugin.getInt(sFunction_, sParam1_, nParam2_))
 }
@@ -125,7 +129,12 @@ func NWNXCPlugin_SetInt(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, nV
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
 	nValue_ := int32(nValue)
-	log.Debugf("NWNXSetInt(%s, %s, %d, %d)", sFunction_, sParam1_, nParam2_, nValue_)
+	log.WithFields(log.Fields{
+		"sFunction": sFunction_,
+		"sParam1":   sParam1_,
+		"nParam2":   nParam2_,
+		"nValue":    nValue_,
+	}).Debug("NWNXSetInt()")
 
 	plugin.setInt(sFunction_, sParam1_, nParam2_, nValue_)
 }
@@ -135,7 +144,11 @@ func NWNXCPlugin_GetFloat(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int) 
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
-	log.Debugf("NWNXGetFloat(%s, %s, %d)", sFunction_, sParam1_, nParam2_)
+	log.WithFields(log.Fields{
+		"sFunction": sFunction_,
+		"sParam1":   sParam1_,
+		"nParam2":   nParam2_,
+	}).Debug("NWNXGetFloat()")
 
 	return C.float(plugin.getFloat(sFunction_, sParam1_, nParam2_))
 }
@@ -146,7 +159,12 @@ func NWNXCPlugin_SetFloat(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int, 
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
 	fValue_ := float32(fValue)
-	log.Debugf("NWNXSetFloat(%s, %s, %d, %d, %f)", sFunction_, sParam1_, nParam2_, fValue_)
+	log.WithFields(log.Fields{
+		"sFunction": sFunction_,
+		"sParam1_":  sParam1_,
+		"nParam2_":  nParam2_,
+		"fValue":    fValue_,
+	}).Debug("NWNXSetFloat()")
 
 	plugin.setFloat(sFunction_, sParam1_, nParam2_, fValue_)
 }
@@ -156,7 +174,11 @@ func NWNXCPlugin_GetString(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int,
 	sFunction_ := C.GoString(sFunction)
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
-	log.Debugf("NWNXGetString(%s, %s, %d)", sFunction_, sParam1_, nParam2_)
+	log.WithFields(log.Fields{
+		"sFunction": sFunction_,
+		"sParam1":   sParam1_,
+		"nParam2":   nParam2_,
+	}).Debug("NWNXGetString()")
 
 	response := C.CString(plugin.getString(sFunction_, sParam1_, nParam2_))
 
@@ -175,7 +197,12 @@ func NWNXCPlugin_SetString(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int,
 	sParam1_ := C.GoString(sParam1)
 	nParam2_ := int32(nParam2)
 	sValue_ := C.GoString(sValue)
-	log.Debugf("NWNXSetString(%s, %s, %d, %s)", sFunction_, sParam1_, nParam2_, sValue_)
+	log.WithFields(log.Fields{
+		"sFunction": sFunction_,
+		"sParam1":   sParam1_,
+		"nParam2":   nParam2_,
+		"sValue":    sValue_,
+	}).Debug("NWNXSetString()")
 
 	plugin.setString(sFunction_, sParam1_, nParam2_, sValue_)
 }
@@ -192,7 +219,11 @@ func NWNXCPlugin_GetGFFSize(_ *C.void, sVarName *C.char) C.size_t {
 	if v, err := strconv.Atoi(sParam2_); err == nil {
 		nParam2_ = int32(v)
 	}
-	log.Debugf("SCORCOGetGFFSize(%s, %s, %d)", sFunction_, sVarName_, nParam2_)
+	log.WithFields(log.Fields{
+		"sFunction": sFunction_,
+		"sVarName":  sVarName_,
+		"nParam2":   nParam2_,
+	}).Debug("SCORCOGetGFFSize()")
 
 	return C.size_t(plugin.getGffSize(sFunction_, sVarName_, nParam2_))
 }
@@ -209,11 +240,15 @@ func NWNXCPlugin_GetGFF(_ *C.void, sVarName *C.char, result *C.uint8_t, resultSi
 	if v, err := strconv.Atoi(sParam2_); err == nil {
 		nParam2_ = int32(v)
 	}
-	log.Debugf("SCORCOGetGFF(%s, %s, %d)", sFunction_, sVarName_, nParam2_)
+	log.WithFields(log.Fields{
+		"sFunction": sFunction_,
+		"sVarName":  sVarName_,
+		"nParam2":   nParam2_,
+	}).Debug("SCORCOGetGFF()")
 
 	response := plugin.getGff(sFunction_, sVarName_, nParam2_)
 	if response == nil {
-		log.Error("Response is null")
+		log.Error("GFF response is empty")
 
 		return
 	}
@@ -246,7 +281,13 @@ func NWNXCPlugin_SetGFF(_ *C.void, sVarName *C.char, gffData *C.uint8_t, gffData
 	if v, err := strconv.Atoi(sParam2_); err == nil {
 		nParam2_ = int32(v)
 	}
-	log.Debugf("SCORCOSetGFF(%s, %s, %d, %x, %d)", sFunction_, sVarName_, nParam2_, gffData_, gffDataSize_)
+	log.WithFields(log.Fields{
+		"sFunction":   sFunction_,
+		"sVarName":    sVarName_,
+		"nParam2":     nParam2_,
+		"gffData":     gffData_,
+		"gffDataSize": gffDataSize_,
+	}).Debug("NWNXSetGFF()")
 
 	plugin.setGff(sFunction_, sVarName_, nParam2_, gffData_, gffDataSize_)
 }
