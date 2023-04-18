@@ -24,7 +24,7 @@ const rpcGetGff string = "RPC_GET_GFF_"
 const rpcSetGff string = "RPC_SET_GFF_"
 const rpcResetCallAction string = "RPC_RESET_CALL_ACTION_"
 const rpcCallAction string = "RPC_CALL_ACTION_"
-const rpcCallActionParam2Default int32 = -1
+const rpcParam2Default int32 = 0
 const rpcStartCallAction int32 = 1
 const rpcEndCallAction int32 = 2
 
@@ -56,11 +56,6 @@ func newCallActionResponse() *pb.CallActionResponse {
 	return &pb.CallActionResponse{
 		Data: make(map[string]*pb.Value),
 	}
-}
-
-func (p *rpcPlugin) resetCallAction() {
-	p.globalCallActionRequest = newCallActionRequest()
-	p.globalCallActionResponse = newCallActionResponse()
 }
 
 // init initializes the RPC plugin
@@ -150,6 +145,12 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 	}
 
 	return rpcClient, true
+}
+
+// Reset the call action request and response
+func (p *rpcPlugin) resetCallAction() {
+	p.globalCallActionRequest = newCallActionRequest()
+	p.globalCallActionResponse = newCallActionResponse()
 }
 
 // getInt the body of the NWNXGetInt() call

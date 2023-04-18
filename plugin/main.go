@@ -209,7 +209,7 @@ func NWNXCPlugin_SetString(_ *C.void, sFunction, sParam1 *C.char, nParam2 C.int,
 
 //export NWNXCPlugin_GetGFFSize
 func NWNXCPlugin_GetGFFSize(_ *C.void, sVarName *C.char) C.size_t {
-	sFunction_, sVarName_, sParam2_, nParam2_ := "", C.GoString(sVarName), "", rpcCallActionParam2Default
+	sFunction_, sVarName_, sParam2_, nParam2_ := "", C.GoString(sVarName), "", rpcParam2Default
 	splits := strings.SplitN(C.GoString(sVarName), rpcPluginSeparator, 3)
 	if len(splits) == 2 {
 		sFunction_, sVarName_ = splits[0], splits[1]
@@ -230,7 +230,7 @@ func NWNXCPlugin_GetGFFSize(_ *C.void, sVarName *C.char) C.size_t {
 
 //export NWNXCPlugin_GetGFF
 func NWNXCPlugin_GetGFF(_ *C.void, sVarName *C.char, result *C.uint8_t, resultSize C.size_t) {
-	sFunction_, sVarName_, sParam2_, nParam2_ := "", C.GoString(sVarName), "", rpcCallActionParam2Default
+	sFunction_, sVarName_, sParam2_, nParam2_ := "", C.GoString(sVarName), "", rpcParam2Default
 	splits := strings.SplitN(C.GoString(sVarName), rpcPluginSeparator, 3)
 	if len(splits) == 2 {
 		sFunction_, sVarName_ = splits[0], splits[1]
@@ -269,7 +269,7 @@ func NWNXCPlugin_GetGFF(_ *C.void, sVarName *C.char, result *C.uint8_t, resultSi
 
 //export NWNXCPlugin_SetGFF
 func NWNXCPlugin_SetGFF(_ *C.void, sVarName *C.char, gffData *C.uint8_t, gffDataSize C.size_t) {
-	sFunction_, sVarName_, sParam2_, nParam2_ := "", C.GoString(sVarName), "", rpcCallActionParam2Default
+	sFunction_, sVarName_, sParam2_, nParam2_ := "", C.GoString(sVarName), "", rpcParam2Default
 	gffDataSize_ := uint32(gffDataSize)
 	gffData_ := C.GoBytes(unsafe.Pointer(gffData), C.int(gffDataSize))
 	splits := strings.SplitN(C.GoString(sVarName), rpcPluginSeparator, 3)
