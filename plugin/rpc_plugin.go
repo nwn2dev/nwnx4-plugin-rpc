@@ -12,6 +12,9 @@ import (
 	"google.golang.org/grpc"
 )
 
+const rpcResetCallAction string = "RPC_RESET_CALL_ACTION_"
+const rpcCallAction string = "RPC_CALL_ACTION_"
+
 const rpcGetInt string = "RPC_GET_INT_"
 const rpcSetInt string = "RPC_SET_INT_"
 const rpcGetBool string = "RPC_GET_BOOL_"
@@ -22,8 +25,7 @@ const rpcGetString string = "RPC_GET_STRING_"
 const rpcSetString string = "RPC_SET_STRING_"
 const rpcGetGff string = "RPC_GET_GFF_"
 const rpcSetGff string = "RPC_SET_GFF_"
-const rpcResetCallAction string = "RPC_RESET_CALL_ACTION_"
-const rpcCallAction string = "RPC_CALL_ACTION_"
+
 const rpcParam2Default int32 = 0
 const rpcStartCallAction int32 = 1
 const rpcEndCallAction int32 = 2

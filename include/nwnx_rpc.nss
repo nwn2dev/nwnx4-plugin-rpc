@@ -1,7 +1,10 @@
 const string NWNX_PREFIX = "NWNX.";
 const string RPC_PLUGIN_ID = "RPC";
 
-const string RPC_PLUGIN_SEPARATOR = "!";
+const string RPC_PLUGIN_SEPARATOR = "\x0C";
+
+const string RPC_RESET_CALL_ACTION = "RPC_RESET_CALL_ACTION_";
+const string RPC_CALL_ACTION = "RPC_CALL_ACTION_";
 
 const string RPC_GET_INT = "RPC_GET_INT_";
 const string RPC_SET_INT = "RPC_SET_INT_";
@@ -13,8 +16,6 @@ const string RPC_GET_STRING = "RPC_GET_STRING_";
 const string RPC_SET_STRING = "RPC_SET_STRING_";
 const string RPC_GET_GFF = "RPC_GET_GFF_";
 const string RPC_SET_GFF = "RPC_SET_GFF_";
-const string RPC_RESET_CALL_ACTION = "RPC_RESET_CALL_ACTION_";
-const string RPC_CALL_ACTION = "RPC_CALL_ACTION_";
 
 const int RPC_PARAM_2_DEFAULT = 0;
 const int RPC_START_CALL_ACTION = 1;
