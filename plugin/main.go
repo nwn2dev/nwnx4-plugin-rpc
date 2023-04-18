@@ -39,7 +39,7 @@ const pluginContact string = "(c) 2021-2023 by ihatemundays (scottmunday84@gmail
 const logFilename string = "xp_rpc.log"
 const configFilename string = "xp_rpc.yml"
 
-const rpcPluginSeparator string = "\f"
+const rpcPluginSeparator string = "!"
 
 var plugin *rpcPlugin // Singleton
 

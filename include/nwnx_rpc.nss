@@ -1,7 +1,7 @@
 const string NWNX_PREFIX = "NWNX.";
 const string RPC_PLUGIN_ID = "RPC";
 
-const string RPC_PLUGIN_SEPARATOR = "\x0C";
+const string RPC_PLUGIN_SEPARATOR = "!";
 
 const string RPC_RESET_BUILD_GENERIC = "RPC_RESET_BUILD_GENERIC_";
 const string RPC_BUILD_GENERIC = "RPC_BUILD_GENERIC_";
