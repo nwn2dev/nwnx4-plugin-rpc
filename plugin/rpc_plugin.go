@@ -115,7 +115,7 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 
 // getRpcClient will get an rpcClient by name
 func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
-	log.Debugf("Getting client with name: %s", name)
+	log.Infof("Getting client with name: %s", name)
 	rpcClient, exists := p.clients[name]
 
 	if !exists {
@@ -157,6 +157,8 @@ func (p *rpcPlugin) resetBuildGeneric() {
 
 // getInt the body of the NWNXGetInt() call
 func (p *rpcPlugin) getInt(sFunction, sParam1 string, nParam2 int32) int32 {
+	log.Info("In NWNXGetInt")
+
 	// ExBuildGeneric()
 	switch sFunction {
 	case rpcGetInt:
@@ -198,6 +200,8 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 string, nParam2 int32) int32 {
 
 // setInt the body of the NWNXSetInt() call
 func (p *rpcPlugin) setInt(sFunction, sParam1 string, nParam2, nValue int32) {
+	log.Info("In NWNXSetInt")
+
 	// ExBuildGeneric()
 	switch sFunction {
 	case rpcSetInt:
@@ -237,6 +241,8 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 string, nParam2, nValue int32) {
 
 // getFloat the body of the NWNXGetFloat() call
 func (p *rpcPlugin) getFloat(sFunction, sParam1 string, nParam2 int32) float32 {
+	log.Info("In NWNXGetFloat")
+
 	// ExBuildGeneric()
 	switch sFunction {
 	case rpcGetFloat:
@@ -264,6 +270,8 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 string, nParam2 int32) float32 {
 
 // setFloat the body of the NWNXSetFloat() call
 func (p *rpcPlugin) setFloat(sFunction, sParam1 string, nParam2 int32, fValue float32) {
+	log.Info("In NWNXSetFloat")
+
 	// ExBuildGeneric()
 	switch sFunction {
 	case rpcSetFloat:
@@ -291,6 +299,8 @@ func (p *rpcPlugin) setFloat(sFunction, sParam1 string, nParam2 int32, fValue fl
 
 // getString the body of the NWNXGetString() call
 func (p *rpcPlugin) getString(sFunction, sParam1 string, nParam2 int32) string {
+	log.Info("In NWNXGetString")
+
 	// ExBuildGeneric()
 	switch sFunction {
 	case rpcGetString:
@@ -318,6 +328,8 @@ func (p *rpcPlugin) getString(sFunction, sParam1 string, nParam2 int32) string {
 
 // setString the body of the NWNXSetString() call
 func (p *rpcPlugin) setString(sFunction, sParam1 string, nParam2 int32, sValue string) {
+	log.Info("In NWNXSetString")
+
 	// ExBuildGeneric()
 	switch sFunction {
 	case rpcSetString:
@@ -366,6 +378,8 @@ func (p *rpcPlugin) setString(sFunction, sParam1 string, nParam2 int32, sValue s
 
 // getGffSize called at the start of RetrieveCampaignObject
 func (p *rpcPlugin) getGffSize(sFunction, sVarName string, _ int32) uint32 {
+	log.Info("In SCORCOGetGFFSize")
+
 	// ExBuildGeneric()
 	switch sFunction {
 	case rpcGetGff:
@@ -387,6 +401,8 @@ func (p *rpcPlugin) getGffSize(sFunction, sVarName string, _ int32) uint32 {
 
 // getGff called at the end of RetrieveCampaignObject
 func (p *rpcPlugin) getGff(sFunction, sVarName string, nParam2 int32) []byte {
+	log.Info("In SCORCOGetGFF")
+
 	// ExBuildGeneric()
 	switch sFunction {
 	case rpcGetGff:
@@ -414,6 +430,8 @@ func (p *rpcPlugin) getGff(sFunction, sVarName string, nParam2 int32) []byte {
 
 // setGff called during StoreCampaignObject
 func (p *rpcPlugin) setGff(sFunction, sVarName string, nParam2 int32, gffData []byte, gffDataSize uint32) {
+	log.Info("In SCORCOSetGFF")
+
 	// ExBuildGeneric()
 	switch sFunction {
 	case rpcSetGff:
