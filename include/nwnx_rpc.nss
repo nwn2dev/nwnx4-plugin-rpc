@@ -21,8 +21,8 @@ const int RPC_START_CALL_ACTION = 1;
 const int RPC_END_CALL_ACTION = 2;
 
 // CallAction
-void RPCResetCallAction();
-void RPCCallAction(string sClient, string sAction);
+void RPCResetCallActionEx();
+void RPCCallActionEx(string sClient, string sAction);
 int RPCGetIntEx(string sParam1, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
 void RPCSetIntEx(string sParam1, int nValue, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
 int RPCGetBoolEx(string sParam1, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
@@ -31,14 +31,14 @@ float RPCGetFloatEx(string sParam1, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAUL
 void RPCSetFloatEx(string sParam1, float fValue, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
 string RPCGetStringEx(string sParam1, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
 void RPCSetStringEx(string sParam1, string sValue, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
-object RPCRetrieveCampaignObjectEx(string sVarName, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
+object RPCRetrieveCampaignObjectEx(string sVarName, location coLocation, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
 int RPCStoreCampaignObjectEx(string sVarName, object oObject, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT);
 
-void RPCResetCallAction() {
+void RPCResetCallActionEx() {
 	NWNXSetString(RPC_PLUGIN_ID, RPC_RESET_CALL_ACTION, "", RPC_CALL_ACTION_PARAM_2_DEFAULT, "");
 }
 
-void RPCCallAction(string sClient, string sAction) {
+void RPCCallActionEx(string sClient, string sAction) {
 	NWNXSetString(RPC_PLUGIN_ID, RPC_CALL_ACTION, sClient, RPC_CALL_ACTION_PARAM_2_DEFAULT, sAction);
 }
 
@@ -74,8 +74,8 @@ void RPCSetStringEx(string sParam1, string sValue, int nParam2 = RPC_CALL_ACTION
 	NWNXSetString(RPC_PLUGIN_ID, RPC_SET_STRING, sParam1, nParam2, sValue);
 }
 
-object RPCRetrieveCampaignObjectEx(string sVarName, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT) {
-	return RetrieveCampaignObject(NWNX_PREFIX + RPC_PLUGIN_ID, RPC_GET_GFF + RPC_PLUGIN_SEPARATOR + IntToString(nParam2) + RPC_PLUGIN_SEPARATOR + sVarName, GetLocation(OBJECT_SELF));
+object RPCRetrieveCampaignObjectEx(string sVarName, location coLocation, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT) {
+	return RetrieveCampaignObject(NWNX_PREFIX + RPC_PLUGIN_ID, RPC_GET_GFF + RPC_PLUGIN_SEPARATOR + IntToString(nParam2) + RPC_PLUGIN_SEPARATOR + sVarName, coLocation);
 }
 
 int RPCStoreCampaignObjectEx(string sVarName, object oObject, int nParam2 = RPC_CALL_ACTION_PARAM_2_DEFAULT) {
@@ -85,11 +85,11 @@ int RPCStoreCampaignObjectEx(string sVarName, object oObject, int nParam2 = RPC_
 // NWNX*
 int RPCGetInt(string sClient, string sParam1, int nParam2 = 0);
 void RPCSetInt(string sClient, string sParam1, int nValue, int nParam2 = 0);
-float RPCGetFloat(string sClient, string sParam1, int nParam2);
+float RPCGetFloat(string sClient, string sParam1, int nParam2 = 0);
 void RPCSetFloat(string sClient, string sParam1, float fValue, int nParam2 = 0);
 string RPCGetString(string sClient, string sParam1, int nParam2 = 0);
 void RPCSetString(string sClient, string sParam1, string sValue, int nParam2 = 0);
-object RPCRetrieveCampaignObject(string sClient, string sVarName);
+object RPCRetrieveCampaignObject(string sClient, string sVarName, location coLocation);
 int RPCStoreCampaignObject(string sClient, string sVarName, object oObject);
 
 int RPCGetInt(string sClient, string sParam1, int nParam2 = 0) {
@@ -100,7 +100,7 @@ void RPCSetInt(string sClient, string sParam1, int nValue, int nParam2 = 0) {
 	NWNXSetInt(RPC_PLUGIN_ID, sClient, sParam1, nParam2, nValue);
 }
 
-float RPCGetFloat(string sClient, string sParam1, int nParam2) {
+float RPCGetFloat(string sClient, string sParam1, int nParam2 = 0) {
 	return NWNXGetFloat(RPC_PLUGIN_ID, sClient, sParam1, nParam2);
 }
 
@@ -116,8 +116,8 @@ void RPCSetString(string sClient, string sParam1, string sValue, int nParam2 = 0
 	NWNXSetString(RPC_PLUGIN_ID, sClient, sParam1, nParam2, sValue);
 }
 
-object RPCRetrieveCampaignObject(string sClient, string sVarName) {
-	return RetrieveCampaignObject(NWNX_PREFIX + RPC_PLUGIN_ID, sClient + RPC_PLUGIN_SEPARATOR + sVarName, GetLocation(OBJECT_SELF));
+object RPCRetrieveCampaignObject(string sClient, string sVarName, location coLocation) {
+	return RetrieveCampaignObject(NWNX_PREFIX + RPC_PLUGIN_ID, sClient + RPC_PLUGIN_SEPARATOR + sVarName, coLocation);
 }
 
 int RPCStoreCampaignObject(string sClient, string sVarName, object oObject) {

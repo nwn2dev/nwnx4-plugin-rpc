@@ -24,7 +24,7 @@ func (c rpcClient) callAction(request *pb.CallActionRequest, timeout time.Durati
 
 	if err != nil {
 		c.isValid = false
-		log.Errorf("Error sending request: %s", err)
+		log.Errorf("Call to CallAction returned error: %s", err)
 	}
 
 	return response, err
@@ -42,8 +42,7 @@ func (c rpcClient) NWNXGetInt(sFunction, sParam1 string, nParam2 int32, timeout 
 	response, err := c.nwnxServiceClient.NWNXGetInt(ctx, &request)
 	if err != nil {
 		c.isValid = false
-		log.Errorf("Call to GetInt returned error: %s; %s, %s, %d",
-			err, request.SFunction, request.SParam1, request.NParam2)
+		log.Errorf("Call to NWNXGetInt returned error: %s", err)
 
 		return 0
 	}
@@ -62,8 +61,7 @@ func (c rpcClient) NWNXSetInt(sFunction, sParam1 string, nParam2, nValue int32, 
 	}
 	if _, err := c.nwnxServiceClient.NWNXSetInt(ctx, &request); err != nil {
 		c.isValid = false
-		log.Errorf("Call to SetInt returned error: %s; %s, %s, %d, %d",
-			err, request.SFunction, request.SParam1, request.NParam2, request.NValue)
+		log.Errorf("Call to NWNXSetInt returned error: %s", err)
 	}
 }
 
@@ -78,8 +76,7 @@ func (c rpcClient) NWNXGetFloat(sFunction, sParam1 string, nParam2 int32, timeou
 	response, err := c.nwnxServiceClient.NWNXGetFloat(ctx, &request)
 	if err != nil {
 		c.isValid = false
-		log.Errorf("Call to GetFloat returned error: %s; %s, %s, %d",
-			err, request.SFunction, request.SParam1, request.NParam2)
+		log.Errorf("Call to NWNXGetFloat returned error: %s", err)
 
 		return 0.0
 	}
@@ -98,8 +95,7 @@ func (c rpcClient) NWNXSetFloat(sFunction, sParam1 string, nParam2 int32, fValue
 	}
 	if _, err := c.nwnxServiceClient.NWNXSetFloat(ctx, &request); err != nil {
 		c.isValid = false
-		log.Errorf("Call to SetFloat returned error: %s; %s, %s, %d, %f",
-			err, request.SFunction, request.SParam1, request.NParam2, request.FValue)
+		log.Errorf("Call to NWNXSetFloat returned error: %s", err)
 	}
 }
 
@@ -114,8 +110,7 @@ func (c rpcClient) NWNXGetString(sFunction, sParam1 string, nParam2 int32, timeo
 	response, err := c.nwnxServiceClient.NWNXGetString(ctx, &request)
 	if err != nil {
 		c.isValid = false
-		log.Errorf("Call to GetString returned error: %s; %s, %s, %d",
-			err, request.SFunction, request.SParam1, request.NParam2)
+		log.Errorf("Call to NWNXGetString returned error: %s", err)
 
 		return ""
 	}
@@ -134,8 +129,7 @@ func (c rpcClient) NWNXSetString(sFunction string, sParam1 string, nParam2 int32
 	}
 	if _, err := c.nwnxServiceClient.NWNXSetString(ctx, &request); err != nil {
 		c.isValid = false
-		log.Errorf("Call to SetString returned error: %s; %s, %s, %d, %s",
-			err, request.SFunction, request.SParam1, request.NParam2, request.SValue)
+		log.Errorf("Call to NWNXSetString returned error: %s", err)
 	}
 }
 
@@ -148,7 +142,7 @@ func (c rpcClient) SCORCOGetGFFSize(sVarName string, timeout time.Duration) uint
 	response, err := c.scorcoServiceClient.SCORCOGetGFFSize(ctx, &request)
 	if err != nil {
 		c.isValid = false
-		log.Errorf("Call to GetGFFSize returned error: %s; %s", err, request.SVarName)
+		log.Errorf("Call to SCORCOGetGFFSize returned error: %s", err)
 
 		return 0
 	}
@@ -165,7 +159,7 @@ func (c rpcClient) SCORCOGetGFF(sVarName string, timeout time.Duration) []byte {
 	response, err := c.scorcoServiceClient.SCORCOGetGFF(ctx, &request)
 	if err != nil {
 		c.isValid = false
-		log.Errorf("Call to GetGFFSize returned error: %s; %s", err, request.SVarName)
+		log.Errorf("Call to SCORCOGetGFF returned error: %s", err)
 
 		return nil
 	}
@@ -183,6 +177,6 @@ func (c rpcClient) SCORCOSetGFF(sVarName string, gffData []byte, gffDataSize uin
 	}
 	if _, err := c.scorcoServiceClient.SCORCOSetGFF(ctx, &request); err != nil {
 		c.isValid = false
-		log.Errorf("Call to SetGFF returned error: %s; %s", err, request.SVarName)
+		log.Errorf("Call to SCORCOSetGFF returned error: %s", err)
 	}
 }

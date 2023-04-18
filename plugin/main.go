@@ -192,7 +192,7 @@ func NWNXCPlugin_GetGFFSize(_ *C.void, sVarName *C.char) C.size_t {
 	if v, err := strconv.Atoi(sParam2_); err == nil {
 		nParam2_ = int32(v)
 	}
-	log.Debugf("GetGFFSize(%s, %s, %d)", sFunction_, sVarName_, nParam2_)
+	log.Debugf("SCORCOGetGFFSize(%s, %s, %d)", sFunction_, sVarName_, nParam2_)
 
 	return C.size_t(plugin.getGffSize(sFunction_, sVarName_, nParam2_))
 }
@@ -209,7 +209,7 @@ func NWNXCPlugin_GetGFF(_ *C.void, sVarName *C.char, result *C.uint8_t, resultSi
 	if v, err := strconv.Atoi(sParam2_); err == nil {
 		nParam2_ = int32(v)
 	}
-	log.Debugf("GetGFF(%s, %s, %d)", sFunction_, sVarName_, nParam2_)
+	log.Debugf("SCORCOGetGFF(%s, %s, %d)", sFunction_, sVarName_, nParam2_)
 
 	response := plugin.getGff(sFunction_, sVarName_, nParam2_)
 	if response == nil {
@@ -246,7 +246,7 @@ func NWNXCPlugin_SetGFF(_ *C.void, sVarName *C.char, gffData *C.uint8_t, gffData
 	if v, err := strconv.Atoi(sParam2_); err == nil {
 		nParam2_ = int32(v)
 	}
-	log.Debugf("SetGFFSize(%s, %s, %d, %x, %d)", sFunction_, sVarName_, nParam2_, gffData_, gffDataSize_)
+	log.Debugf("SCORCOSetGFF(%s, %s, %d, %x, %d)", sFunction_, sVarName_, nParam2_, gffData_, gffDataSize_)
 
 	plugin.setGff(sFunction_, sVarName_, nParam2_, gffData_, gffDataSize_)
 }
