@@ -24,7 +24,7 @@ func (c rpcClient) buildGeneric(request *pb.ExBuildGenericRequest, timeout time.
 
 	if err != nil {
 		c.isValid = false
-		log.Errorf("Call to CallAction returned error: %s", err)
+		log.Errorf("Call to ExBuildGeneric returned error: %s", err)
 	}
 
 	return response, err

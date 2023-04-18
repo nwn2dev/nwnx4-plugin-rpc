@@ -20,53 +20,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type Float struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Value float32 `protobuf:"fixed32,1,opt,name=value,proto3" json:"value,omitempty"`
-}
-
-func (x *Float) Reset() {
-	*x = Float{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_types_proto_msgTypes[0]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *Float) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Float) ProtoMessage() {}
-
-func (x *Float) ProtoReflect() protoreflect.Message {
-	mi := &file_types_proto_msgTypes[0]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Float.ProtoReflect.Descriptor instead.
-func (*Float) Descriptor() ([]byte, []int) {
-	return file_types_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *Float) GetValue() float32 {
-	if x != nil {
-		return x.Value
-	}
-	return 0
-}
-
 type Int struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -78,7 +31,7 @@ type Int struct {
 func (x *Int) Reset() {
 	*x = Int{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_types_proto_msgTypes[1]
+		mi := &file_types_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -91,7 +44,7 @@ func (x *Int) String() string {
 func (*Int) ProtoMessage() {}
 
 func (x *Int) ProtoReflect() protoreflect.Message {
-	mi := &file_types_proto_msgTypes[1]
+	mi := &file_types_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -104,10 +57,57 @@ func (x *Int) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Int.ProtoReflect.Descriptor instead.
 func (*Int) Descriptor() ([]byte, []int) {
-	return file_types_proto_rawDescGZIP(), []int{1}
+	return file_types_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Int) GetValue() int32 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
+type Float struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Value float32 `protobuf:"fixed32,1,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (x *Float) Reset() {
+	*x = Float{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_types_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Float) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Float) ProtoMessage() {}
+
+func (x *Float) ProtoReflect() protoreflect.Message {
+	mi := &file_types_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Float.ProtoReflect.Descriptor instead.
+func (*Float) Descriptor() ([]byte, []int) {
+	return file_types_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Float) GetValue() float32 {
 	if x != nil {
 		return x.Value
 	}
@@ -203,10 +203,10 @@ var File_types_proto protoreflect.FileDescriptor
 
 var file_types_proto_rawDesc = []byte{
 	0x0a, 0x0b, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x09, 0x4e,
-	0x57, 0x4e, 0x58, 0x34, 0x2e, 0x52, 0x50, 0x43, 0x22, 0x1d, 0x0a, 0x05, 0x46, 0x6c, 0x6f, 0x61,
-	0x74, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x02,
-	0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x1b, 0x0a, 0x03, 0x49, 0x6e, 0x74, 0x12, 0x14,
-	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05, 0x76,
+	0x57, 0x4e, 0x58, 0x34, 0x2e, 0x52, 0x50, 0x43, 0x22, 0x1b, 0x0a, 0x03, 0x49, 0x6e, 0x74, 0x12,
+	0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x05,
+	0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x1d, 0x0a, 0x05, 0x46, 0x6c, 0x6f, 0x61, 0x74, 0x12, 0x14,
+	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x02, 0x52, 0x05, 0x76,
 	0x61, 0x6c, 0x75, 0x65, 0x22, 0x1e, 0x0a, 0x06, 0x53, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x12, 0x14,
 	0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76,
 	0x61, 0x6c, 0x75, 0x65, 0x22, 0x06, 0x0a, 0x04, 0x56, 0x6f, 0x69, 0x64, 0x42, 0x0e, 0x5a, 0x0c,
@@ -228,8 +228,8 @@ func file_types_proto_rawDescGZIP() []byte {
 
 var file_types_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_types_proto_goTypes = []interface{}{
-	(*Float)(nil),  // 0: NWNX4.RPC.Float
-	(*Int)(nil),    // 1: NWNX4.RPC.Int
+	(*Int)(nil),    // 0: NWNX4.RPC.Int
+	(*Float)(nil),  // 1: NWNX4.RPC.Float
 	(*String)(nil), // 2: NWNX4.RPC.String
 	(*Void)(nil),   // 3: NWNX4.RPC.Void
 }
@@ -248,7 +248,7 @@ func file_types_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_types_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Float); i {
+			switch v := v.(*Int); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -260,7 +260,7 @@ func file_types_proto_init() {
 			}
 		}
 		file_types_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Int); i {
+			switch v := v.(*Float); i {
 			case 0:
 				return &v.state
 			case 1:

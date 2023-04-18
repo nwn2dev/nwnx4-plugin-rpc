@@ -4,12 +4,12 @@ option go_package = "plugin/proto";
 
 package NWNX4.RPC;
 
-message Float {
-  float value = 1;
-}
-
 message Int {
   int32 value = 1;
+}
+
+message Float {
+  float value = 1;
 }
 
 message String {
