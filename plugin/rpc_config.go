@@ -19,5 +19,5 @@ func (p *rpcConfig) getDelay() time.Duration {
 }
 
 func (p *rpcConfig) getTimeout() time.Duration {
-	return time.Second * time.Duration(p.PerClient.Retries)
+	return time.Second * time.Duration(p.PerClient.Timeout)
 }
