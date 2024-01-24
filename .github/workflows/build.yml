@@ -15,7 +15,7 @@ jobs:
       - name: Install TDM-GCC
         shell: powershell
         run: |
-          Invoke-WebRequest -Uri https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm-1/gcc-10.3.0-tdm64-32.1z.exe -OutFile C:\tdm-gcc.exe
+          Invoke-WebRequest -Uri https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm64-2/tdm64-gcc-10.3.0-2.exe -OutFile C:\tdm-gcc.exe
           Start-Process -Wait -FilePath C:\tdm-gcc.exe
           Remove-Item C:\tdm-gcc.exe
 
