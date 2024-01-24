@@ -53,6 +53,8 @@ Replace go_ with the language you wish to use (java_, cpp_, etc.) and the *_out 
 With a created external application, configure your xp_rpc settings for the client from the xp_rpc.yml file.
 
 ```yaml
+auth:
+  certPath: path/to/cert
 log:
   logLevel: info
 perClient:

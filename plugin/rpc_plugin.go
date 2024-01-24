@@ -2,6 +2,7 @@ package main
 
 import (
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	pb "nwnx4.org/nwn2dev/xp_rpc/proto"
 	"strings"
@@ -32,6 +33,7 @@ const rpcEndBuildGeneric int32 = 2
 
 type rpcPlugin struct {
 	config                       rpcConfig
+	certPath                     *string
 	clients                      map[string]*rpcClient
 	globalExBuildGenericRequest  *pb.ExBuildGenericRequest
 	globalExBuildGenericResponse *pb.ExBuildGenericResponse
@@ -41,6 +43,7 @@ type rpcPlugin struct {
 func newRpcPlugin() *rpcPlugin {
 	return &rpcPlugin{
 		config:                       rpcConfig{},
+		certPath:                     nil,
 		clients:                      make(map[string]*rpcClient),
 		globalExBuildGenericRequest:  newExBuildGenericRequest(),
 		globalExBuildGenericResponse: newExBuildGenericResponse(),
@@ -85,7 +88,31 @@ func (p *rpcPlugin) init() {
 // Runs on an rpcPlugin and adds a client by name and URL
 func (p *rpcPlugin) addRpcClient(name, url string) {
 	log.Infof("Adding client: %s@%s", name, url)
-	conn, err := grpc.Dial(url, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	// Load the certificate
+	var conn *grpc.ClientConn
+	var err error
+	if p.certPath != nil {
+		creds, err := credentials.NewClientTLSFromFile(*p.certPath, "")
+		if err != nil {
+			log.Errorf("Unable to load certificate: %v", err)
+			p.clients[name] = &rpcClient{
+				isValid:             false,
+				name:                name,
+				url:                 url,
+				exServiceClient:     nil,
+				nwnxServiceClient:   nil,
+				scorcoServiceClient: nil,
+			}
+			return
+		}
+
+		conn, err = grpc.Dial(url, grpc.WithTransportCredentials(creds))
+	} else {
+		conn, err = grpc.Dial(url, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	// Dial with the loaded certificate
 	if err != nil {
 		log.Errorf("Unable to attach client: %s@%s", name, url)
 
@@ -101,6 +128,7 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 		return
 	}
 
+	// Create gRPC clients with the connection
 	p.clients[name] = &rpcClient{
 		isValid:             true,
 		name:                name,
