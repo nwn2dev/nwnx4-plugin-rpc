@@ -12,12 +12,22 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Install TDM-GCC
-        shell: powershell
+      - name: Install MSYS2
         run: |
-          Invoke-WebRequest -Uri https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm-1/gcc-10.3.0-tdm64-32.1z.exe -OutFile C:\tdm-gcc.exe
-          Start-Process -Wait -FilePath C:\tdm-gcc.exe
-          Remove-Item C:\tdm-gcc.exe
+          choco install msys2 --params "/NoUpdate"
+
+      - name: Refresh MSYS2 installation
+        run: |
+          RefreshEnv
+          C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -Syu"
+
+      - name: Install MinGW-w64 32-bit
+        run: |
+          C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -S mingw-w64-i686-toolchain"
+
+      - name: Set MinGW-w64 environment variables
+        run: |
+          ";C:\msys64\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Append            
 
       - name: Setup Go
         uses: actions/setup-go@v2
@@ -30,7 +40,6 @@ jobs:
           GOOS: windows
           GOARCH: 386
           CGO_ENABLED: 1
-          PATH: C:\TDM-GCC-64\bin;$env:PATH  # Add TDM-GCC to PATH
         working-directory: plugin
         run: go build -ldflags '-s -w -linkmode external -extldflags -static-libgcc -extldflags -static-libstdc++' -o ../dist/xp_rpc.dll -buildmode=c-shared
 
