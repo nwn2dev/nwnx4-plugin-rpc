@@ -21,13 +21,13 @@ jobs:
           RefreshEnv
           C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -Syu"
 
-      - name: Install MinGW-w64 32-bit and 64-bit
+      - name: Install MinGW-w64 32-bit
         run: |
-          C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -S mingw-w64-i686-toolchain mingw-w64-x86_64-toolchain"
+          C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -S mingw-w64-i686-toolchain"
 
       - name: Set MinGW-w64 environment variables
         run: |
-          "C:\msys64\mingw64\bin;C:\msys64\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Append            
+          ";C:\msys64\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Append            
 
       - name: Setup Go
         uses: actions/setup-go@v2
