@@ -12,12 +12,9 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Install TDM-GCC
+      - name: Install MinGW
         shell: powershell
-        run: |
-          Invoke-WebRequest -Uri https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm64-2/tdm64-gcc-10.3.0-2.exe -OutFile C:\tdm-gcc.exe
-          Start-Process -Wait -FilePath C:\tdm-gcc.exe
-          Remove-Item C:\tdm-gcc.exe
+        run: choco install mingw
 
       - name: Setup Go
         uses: actions/setup-go@v2
@@ -30,7 +27,6 @@ jobs:
           GOOS: windows
           GOARCH: 386
           CGO_ENABLED: 1
-          PATH: C:\TDM-GCC-64\bin;$env:PATH  # Add TDM-GCC to PATH
         working-directory: plugin
         run: go build -ldflags '-s -w -linkmode external -extldflags -static-libgcc -extldflags -static-libstdc++' -o ../dist/xp_rpc.dll -buildmode=c-shared
 
