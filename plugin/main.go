@@ -33,7 +33,7 @@ import (
 const pluginID string = "RPC"               // Plugin ID used for identification in the list
 const pluginName string = "NWNX RPC Plugin" // Plugin name passed to hook
 const pluginDescription string = "A better way to integrate services with NWN2"
-const pluginVersion string = "0.5.0" // Plugin version passed to hook
+const pluginVersion string = "0.5.1" // Plugin version passed to hook
 const pluginContact string = "(c) 2021-2024 by ihatemundays (scottmunday84@gmail.com)"
 
 const logFilename string = "xp_rpc.log"
