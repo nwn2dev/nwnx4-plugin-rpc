@@ -32,7 +32,7 @@ jobs:
           CGO_ENABLED: 1
           # PATH: C:\TDM-GCC-64\bin;$env:PATH  # Add TDM-GCC to PATH
         working-directory: plugin
-        run: go build -ldflags '-s -w -static-libgcc -static-libstdc++' -o ../dist/xp_rpc.dll -buildmode=c-shared
+        run: go build -ldflags '-s -w -linkmode external -extldflags -static-libgcc -extldflags -static-libstdc++' -o ../dist/xp_rpc.dll -buildmode=c-shared
 
       - name: Copy all necessary files into distribution
         shell: powershell
