@@ -18,7 +18,7 @@ jobs:
 
       - name: Set MinGW-w64 environment variables
         run: |
-          echo "::set-env name=PATH::C:\msys64\mingw64\bin;C:\msys64\mingw32\bin;$PATH"            
+          "C:\msys64\mingw64\bin;C:\msys64\mingw32\bin;" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Refresh MSYS2 installation
         run: |
