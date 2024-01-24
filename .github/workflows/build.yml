@@ -33,7 +33,7 @@ jobs:
           CC: i686-w64-mingw32-gcc
           CXX: i686-w64-mingw32-g++
         working-directory: plugin
-        run: go build -ldflags '-s -w' -o ../dist/xp_rpc.dll -buildmode=c-shared
+        run: go build -ldflags '-s -w -linkmode external -extldflags -static-libgcc -extldflags -static-libstdc++' -o ../dist/xp_rpc.dll -buildmode=c-shared
 
       - name: Copy all necessary files into distribution
         shell: bash
