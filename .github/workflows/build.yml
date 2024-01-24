@@ -4,48 +4,47 @@ on: [push, pull_request]
 jobs:
   build:
     name: Build NWNX4 plugin xp_rpc
-    runs-on: ubuntu-latest
+    runs-on: windows-latest  # Change the operating system to Windows
+
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Install dependencies
-        shell: bash
+      - name: Install TDM-GCC
+        shell: powershell
         run: |
-          sudo apt update
-          sudo apt-get install -y gcc-multilib
-          sudo apt-get install -y gcc-mingw-w64
+          Invoke-WebRequest -Uri https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm-1/gcc-10.3.0-tdm64-32.1z.exe -OutFile C:\tdm-gcc.exe
+          Start-Process -Wait -FilePath C:\tdm-gcc.exe
+          Remove-Item C:\tdm-gcc.exe
 
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.18.0-rc1
-          stable: false
+          go-version: 1.17
 
       - name: Build Win32 x86 DLL for NWNX4
-        shell: bash
+        shell: powershell
         env:
           GOOS: windows
           GOARCH: 386
           CGO_ENABLED: 1
-          CC: i686-w64-mingw32-gcc
-          CXX: i686-w64-mingw32-g++
+          PATH: C:\TDM-GCC-64\bin;$env:PATH  # Add TDM-GCC to PATH
         working-directory: plugin
         run: go build -ldflags '-s -w -linkmode external -extldflags -static-libgcc -extldflags -static-libstdc++' -o ../dist/xp_rpc.dll -buildmode=c-shared
 
       - name: Copy all necessary files into distribution
-        shell: bash
+        shell: powershell
         run: |
-          cp -r ./include ./dist
-          cp -r ./proto ./dist
-          cp ./plugin/xp_rpc.yml ./dist
+          Copy-Item -Recurse -Path .\include -Destination .\dist
+          Copy-Item -Recurse -Path .\proto -Destination .\dist
+          Copy-Item -Path .\plugin\xp_rpc.yml -Destination .\dist
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: xp_rpc-${{github.sha}}
+          name: xp_rpc-${{ github.sha }}
           path: dist/
 
   release:
