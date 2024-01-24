@@ -12,9 +12,22 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Install MinGW
-        shell: powershell
-        run: choco install mingw
+      - name: Install MSYS2
+        run: |
+          choco install msys2 --params "/NoUpdate"
+
+      - name: Refresh MSYS2 installation
+        run: |
+          RefreshEnv
+          pacman --noconfirm -Syu
+
+      - name: Install MinGW-w64 32-bit and 64-bit
+        run: |
+          pacman --noconfirm -S mingw-w64-i686-toolchain mingw-w64-x86_64-toolchain
+
+      - name: Set MinGW-w64 environment variables
+        run: |
+          echo "::set-env name=PATH::C:\msys64\mingw64\bin;C:\msys64\mingw32\bin;$PATH"      
 
       - name: Setup Go
         uses: actions/setup-go@v2
