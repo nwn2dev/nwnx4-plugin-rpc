@@ -3,6 +3,9 @@ package main
 import "time"
 
 type rpcConfig struct {
+	Auth struct {
+		CertPath *string `yaml:"certPath"`
+	} `yaml:"auth"`
 	Log struct {
 		LogLevel string `yaml:"logLevel" default:"info"`
 	} `yaml:"log"`

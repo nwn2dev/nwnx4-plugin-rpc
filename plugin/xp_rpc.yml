@@ -1,3 +1,5 @@
+auth:
+#  certPath:
 log:
   logLevel: info
 perClient:
