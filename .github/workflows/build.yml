@@ -7,7 +7,7 @@ jobs:
     runs-on: windows-latest  # Change the operating system to Windows
     defaults:
       run:
-        shell: msys2 {0}
+        shell: powershell
 
     steps:
       - uses: actions/checkout@v3
@@ -32,7 +32,6 @@ jobs:
           go-version: 1.17
 
       - name: Build Win32 x86 DLL for NWNX4
-        shell: powershell
         env:
           GOOS: windows
           GOARCH: 386
@@ -41,7 +40,6 @@ jobs:
         run: go build -ldflags '-s -w -linkmode external -extldflags -static-libgcc -extldflags -static-libstdc++' -o ../dist/xp_rpc.dll -buildmode=c-shared
 
       - name: Copy all necessary files into distribution
-        shell: powershell
         run: |
           Copy-Item -Recurse -Path .\include -Destination .\dist
           Copy-Item -Recurse -Path .\proto -Destination .\dist
