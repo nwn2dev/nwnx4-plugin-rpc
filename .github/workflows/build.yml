@@ -28,9 +28,8 @@ jobs:
           go-version: 1.17
 
       - name: Build Win32 x86 DLL for NWNX4
-        shell: msys {0}
         env:
-          MSYSTEM: MINGW32
+          MSYSTEM: mingw32
           GOOS: windows
           GOARCH: 386
           CGO_ENABLED: 1
