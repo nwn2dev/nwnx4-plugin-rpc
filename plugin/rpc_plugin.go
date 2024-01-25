@@ -1,10 +1,14 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/pkcs12"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	pb "nwnx4.org/nwn2dev/xp_rpc/proto"
+	"os"
 	"strings"
 	"time"
 )
@@ -33,7 +37,7 @@ const rpcEndBuildGeneric int32 = 2
 
 type rpcPlugin struct {
 	config                       rpcConfig
-	certPath                     *string
+	creds                        credentials.TransportCredentials
 	clients                      map[string]*rpcClient
 	globalExBuildGenericRequest  *pb.ExBuildGenericRequest
 	globalExBuildGenericResponse *pb.ExBuildGenericResponse
@@ -43,7 +47,7 @@ type rpcPlugin struct {
 func newRpcPlugin() *rpcPlugin {
 	return &rpcPlugin{
 		config:                       rpcConfig{},
-		certPath:                     nil,
+		creds:                        insecure.NewCredentials(),
 		clients:                      make(map[string]*rpcClient),
 		globalExBuildGenericRequest:  newExBuildGenericRequest(),
 		globalExBuildGenericResponse: newExBuildGenericResponse(),
@@ -66,6 +70,49 @@ func newExBuildGenericResponse() *pb.ExBuildGenericResponse {
 // init initializes the RPC plugin
 func (p *rpcPlugin) init() {
 	log.Info("Initializing RPC plugin")
+
+	// Add a certificate
+	getCredentials := func() {
+		if p.config.Auth.PfxFilePath == nil && p.config.Auth.PfxPassword == nil {
+			log.Info("Using insecure auth. settings")
+
+			return
+		}
+
+		pfxFilePath, pfxPassword := *p.config.Auth.PfxFilePath, ""
+
+		if p.config.Auth.PfxPassword != nil {
+			pfxPassword = *p.config.Auth.PfxPassword
+		}
+
+		// Load the PFX file
+		pfxData, err := os.ReadFile(pfxFilePath)
+		if err != nil {
+			log.Fatalf("Error reading PFX file: %v", err)
+		}
+
+		// Parse the PFX data to get the certificate
+		_, cert, err := pkcs12.Decode(pfxData, pfxPassword)
+		if err != nil {
+			log.Fatalf("Error decoding PFX file: %v", err)
+		}
+
+		// Create a new certificate pool and add the certificate
+		caCertPool := x509.NewCertPool()
+		caCertPool.AddCert(cert)
+
+		// Create a TLS configuration using the parsed certificate
+		tlsConfig := &tls.Config{
+			RootCAs:            caCertPool,
+			InsecureSkipVerify: true,
+		}
+
+		// Create a credentials object from the TLS configuration
+		p.creds = credentials.NewTLS(tlsConfig)
+
+		log.Info("Using secure auth. settings")
+	}
+	getCredentials()
 
 	// Set the log level based on what was passed if it matches a level
 	for _, logLevel := range log.AllLevels {
@@ -92,38 +139,12 @@ func (p *rpcPlugin) addRpcClient(name, url string) {
 	// Load the certificate
 	var conn *grpc.ClientConn
 	var err error
-	if p.certPath != nil {
-		creds, err := credentials.NewClientTLSFromFile(*p.certPath, "")
-		if err != nil {
-			log.Errorf("Unable to load certificate: %v", err)
-			p.clients[name] = &rpcClient{
-				isValid:             false,
-				name:                name,
-				url:                 url,
-				exServiceClient:     nil,
-				nwnxServiceClient:   nil,
-				scorcoServiceClient: nil,
-			}
-			return
-		}
-
-		conn, err = grpc.Dial(url, grpc.WithTransportCredentials(creds))
-	} else {
-		conn, err = grpc.Dial(url, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	}
+	conn, err = grpc.Dial(url, grpc.WithTransportCredentials(p.creds))
 
 	// Dial with the loaded certificate
 	if err != nil {
 		log.Errorf("Unable to attach client: %s@%s", name, url)
-
-		p.clients[name] = &rpcClient{
-			isValid:             false,
-			name:                name,
-			url:                 url,
-			exServiceClient:     nil,
-			nwnxServiceClient:   nil,
-			scorcoServiceClient: nil,
-		}
+		p.clients[name] = newRpcClient(name, url)
 
 		return
 	}

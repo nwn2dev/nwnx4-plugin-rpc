@@ -17,6 +17,17 @@ type rpcClient struct {
 	scorcoServiceClient pb.SCORCOServiceClient
 }
 
+func newRpcClient(name, url string) *rpcClient {
+	return &rpcClient{
+		isValid:             false,
+		name:                name,
+		url:                 url,
+		exServiceClient:     nil,
+		nwnxServiceClient:   nil,
+		scorcoServiceClient: nil,
+	}
+}
+
 func (c rpcClient) buildGeneric(request *pb.ExBuildGenericRequest, timeout time.Duration) (*pb.ExBuildGenericResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
