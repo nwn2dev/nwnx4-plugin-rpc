@@ -12,28 +12,28 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Cache MinGW32
-        id: mingw32
+      - name: Cache MSYS2
+        id: msys2
         uses: actions/cache@v4
         with:
-          path: C:\msys64\mingw32\bin
+          path: C:\msys64
           key: ${{ runner.os }}-${{ hashFiles('**/lockFiles') }}
 
       - name: Install MSYS2
         run: |
           choco install msys2 --params "/NoUpdate"
-        if: steps.mingw32.outputs.cache-hit != 'true'
+        if: steps.msys2.outputs.cache-hit != 'true'
 
       - name: Refresh MSYS2 installation
         run: |
           RefreshEnv
           C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -Syu"
-        if: steps.mingw32.outputs.cache-hit != 'true'
+        if: steps.msys2.outputs.cache-hit != 'true'
 
       - name: Install MinGW-w64 32-bit
         run: |
           C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -S mingw-w64-i686-toolchain"
-        if: steps.mingw32.outputs.cache-hit != 'true'
+        if: steps.msys2.outputs.cache-hit != 'true'
 
       - name: Set MinGW-w64 environment variables
         run: |
