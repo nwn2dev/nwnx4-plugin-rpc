@@ -22,6 +22,10 @@ jobs:
           update: true
           install: mingw-w64-i686-toolchain
 
+      - name: Set MinGW-w64 32-bit toolchain to path
+        run: |
+          ";C:\msys64\mingw32\bin" | Out-File -FilePath $env:GITHUB_PATH -Append            
+
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
@@ -33,8 +37,6 @@ jobs:
           GOOS: windows
           GOARCH: 386
           CGO_ENABLED: 1
-          CC: i686-w64-mingw32-gcc
-          CXX: i686-w64-mingw32-g++
         working-directory: plugin
         run: go build -ldflags '-s -w -linkmode external -extldflags -static-libgcc -extldflags -static-libstdc++' -o ../dist/xp_rpc.dll -buildmode=c-shared
 
