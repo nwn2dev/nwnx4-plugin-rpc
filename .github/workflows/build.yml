@@ -14,9 +14,10 @@ jobs:
 
       - name: Cache MingW32
         id: mingw32
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: C:\msys64\mingw32\bin
+          key: ${{ runner.os }}-${{ hashFiles('**/lockFiles') }}
 
       - name: Install MSYS2
         run: |
