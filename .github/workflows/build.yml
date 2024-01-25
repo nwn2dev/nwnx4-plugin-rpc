@@ -24,8 +24,8 @@ jobs:
 
       - name: Test path
         run: |
-          echo $PATH
-          echo $MINGW_PREFIX
+          echo $env:PATH
+          echo $env:MINGW_PREFIX
 
       - name: Setup Go
         uses: actions/setup-go@v2
