@@ -7,23 +7,32 @@ jobs:
     runs-on: windows-latest  # Change the operating system to Windows
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Cache MingW32
+        id: mingw32
+        with:
+          path: C:\msys64\mingw32\bin
+
       - name: Install MSYS2
         run: |
           choco install msys2 --params "/NoUpdate"
+        if: steps.mingw32.outputs.cache-hit != 'true'
 
       - name: Refresh MSYS2 installation
+        uses: actions/cache@v3
         run: |
           RefreshEnv
           C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -Syu"
+        if: steps.mingw32.outputs.cache-hit != 'true'
 
       - name: Install MinGW-w64 32-bit
         run: |
           C:\msys64\usr\bin\bash.exe -lc "pacman --noconfirm -S mingw-w64-i686-toolchain"
+        if: steps.mingw32.outputs.cache-hit != 'true'
 
       - name: Set MinGW-w64 environment variables
         run: |
