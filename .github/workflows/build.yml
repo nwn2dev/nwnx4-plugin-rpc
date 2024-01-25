@@ -20,12 +20,7 @@ jobs:
         with:
           msystem: MINGW32
           update: true
-          install: mingw-w64-i686-toolchain
-
-      - name: Test path
-        run: |
-          echo $env:PATH
-          echo $env:MINGW_PREFIX
+          install: mingw-w64-i686-gcc
 
       - name: Setup Go
         uses: actions/setup-go@v2
