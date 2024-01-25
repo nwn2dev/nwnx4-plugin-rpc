@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/pkcs12"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	pb "nwnx4.org/nwn2dev/xp_rpc/proto"
@@ -78,43 +79,36 @@ func (p *rpcPlugin) init() {
 			return
 		}
 
-		pfxFilePath, pfxPassword := *p.config.Auth.PfxFilePath, p.config.Auth.PfxPassword
+		pfxFilePath, pfxPassword := *p.config.Auth.PfxFilePath, ""
+
+		if p.config.Auth.PfxPassword != nil {
+			pfxPassword = *p.config.Auth.PfxPassword
+		}
 
 		// Load the PFX file
 		pfxData, err := os.ReadFile(pfxFilePath)
-
 		if err != nil {
 			log.Fatalf("Error reading PFX file: %v", err)
 		}
 
-		// Create a new certificate pool
-		caCertPool := x509.NewCertPool()
-
-		// Assuming the PFX file contains the CA certificate, add it to the pool
-		if ok := caCertPool.AppendCertsFromPEM(pfxData); !ok {
-			log.Fatal("Error adding CA certificate to the pool")
+		// Parse the PFX data to get the certificate
+		_, cert, err := pkcs12.Decode(pfxData, pfxPassword)
+		if err != nil {
+			log.Fatalf("Error decoding PFX file: %v", err)
 		}
 
-		// Create a TLS configuration using the PFX file and password
+		// Create a new certificate pool and add the certificate
+		caCertPool := x509.NewCertPool()
+		caCertPool.AddCert(cert)
+
+		// Create a TLS configuration using the parsed certificate
 		tlsConfig := &tls.Config{
 			RootCAs:            caCertPool,
-			InsecureSkipVerify: true, // Set to false if you want to verify the server's certificate
-		}
-
-		// Load the PFX file into a TLS key pair
-		if pfxPassword != nil {
-			cert, err := tls.X509KeyPair(pfxData, []byte(*pfxPassword))
-			if err != nil {
-				log.Fatalf("Error loading X.509 key pair: %v", err)
-			}
-			tlsConfig.Certificates = []tls.Certificate{cert}
-		}
-
-		// Create a TLS configuration using the PFX file; store in plugin's creds
-		p.creds = credentials.NewTLS(&tls.Config{
-			RootCAs:            caCertPool,
 			InsecureSkipVerify: true,
-		})
+		}
+
+		// Create a credentials object from the TLS configuration
+		p.creds = credentials.NewTLS(tlsConfig)
 	}
 	getCredentials()
 
