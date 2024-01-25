@@ -4,7 +4,8 @@ import "time"
 
 type rpcConfig struct {
 	Auth struct {
-		CertPath *string `yaml:"certPath"`
+		PfxFilePath *string `yaml:"pfxFilePath"`
+		PfxPassword *string `yaml:"pfxPassword"`
 	} `yaml:"auth"`
 	Log struct {
 		LogLevel string `yaml:"logLevel" default:"info"`

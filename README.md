@@ -54,7 +54,8 @@ With a created external application, configure your xp_rpc settings for the clie
 
 ```yaml
 auth:
-  certPath: path/to/cert
+  pfxFilePath: path/to/pfx
+  pfxPassword: password
 log:
   logLevel: info
 perClient:
