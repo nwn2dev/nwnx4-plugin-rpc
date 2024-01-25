@@ -15,15 +15,12 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Setup MSYS2
+      - name: Setup MSYS2/MinGW-w64 32-bit
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
-
-      - name: Update Install MinGW-w64 32-bit toolchain
-        shell: msys2 {0}
-        run: |
-          pacman --noconfirm -Syu mingw-w64-i686-toolchain            
+          update: true
+          install: mingw-w64-i686-gcc
 
       - name: Setup Go
         uses: actions/setup-go@v2
