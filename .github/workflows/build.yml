@@ -20,16 +20,10 @@ jobs:
         with:
           msystem: UCRT64
 
-      - name: Refresh MSYS2 installation
-        shell: cmd
-        run: |
-          RefreshEnv
-
-      - name: Install MinGW-w64 32-bit toolchain
+      - name: Update Install MinGW-w64 32-bit toolchain
         shell: msys2 {0}
         run: |
-          pacman --noconfirm -Syu
-          pacman --noconfirm -S mingw-w64-i686-toolchain 
+          pacman --noconfirm -Syu mingw-w64-i686-toolchain            
 
       - name: Setup Go
         uses: actions/setup-go@v2
