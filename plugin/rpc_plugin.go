@@ -74,7 +74,7 @@ func (p *rpcPlugin) init() {
 	// Add a certificate
 	getCredentials := func() {
 		if p.config.Auth.PfxFilePath == nil && p.config.Auth.PfxPassword == nil {
-			log.Info("Using insecure auth settings")
+			log.Info("Using insecure auth. settings")
 
 			return
 		}
@@ -109,6 +109,8 @@ func (p *rpcPlugin) init() {
 
 		// Create a credentials object from the TLS configuration
 		p.creds = credentials.NewTLS(tlsConfig)
+
+		log.Info("Using secure auth. settings")
 	}
 	getCredentials()
 
