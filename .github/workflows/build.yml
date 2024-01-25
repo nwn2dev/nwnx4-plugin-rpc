@@ -23,7 +23,9 @@ jobs:
           install: mingw-w64-i686-toolchain
 
       - name: Test path
-        run: echo $PATH
+        run: |
+          echo $PATH
+          echo $MINGW_PREFIX
 
       - name: Setup Go
         uses: actions/setup-go@v2
