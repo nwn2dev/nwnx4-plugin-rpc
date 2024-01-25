@@ -21,6 +21,7 @@ jobs:
           msystem: UCRT64
 
       - name: Refresh MSYS2 installation
+        shell: cmd
         run: |
           RefreshEnv
 
