@@ -15,10 +15,20 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Setup MinGW
-        uses: egor-tensin/setup-mingw@v2
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
         with:
-          platform: i686
+          msystem: UCRT64
+
+      - name: Refresh MSYS2 installation
+        run: |
+          RefreshEnv
+
+      - name: Install MinGW-w64 32-bit toolchain
+        shell: msys2 {0}
+        run: |
+          pacman --noconfirm -Syu
+          pacman --noconfirm -S mingw-w64-i686-toolchain 
 
       - name: Setup Go
         uses: actions/setup-go@v2
