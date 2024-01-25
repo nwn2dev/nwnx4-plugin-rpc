@@ -16,7 +16,7 @@ jobs:
           submodules: recursive
 
       - name: Setup MSYS2/MinGW-w64 32-bit
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@v4
         with:
           msystem: UCRT64
           update: true
