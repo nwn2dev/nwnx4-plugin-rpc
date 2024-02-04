@@ -4,10 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/pkcs12"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	pb "nwnx4.org/nwn2dev/xp_rpc/proto"
 	"os"
 	"strings"
@@ -72,7 +75,7 @@ func newExGenericResponse() *pb.ExBuildGenericResponse {
 	}
 }
 
-func (p rpcPlugin) closeExGenericStreamClient() error {
+func (p *rpcPlugin) closeExGenericStreamClient() error {
 	if p.globalExGenericStreamClient == nil {
 		return nil
 	}
@@ -83,18 +86,17 @@ func (p rpcPlugin) closeExGenericStreamClient() error {
 	return err
 }
 
-func (p rpcPlugin) setExStreamServiceClient(client *rpcClient, request *pb.ExBuildGenericRequest, timeout time.Duration) error {
+func (p *rpcPlugin) buildExBuildGenericStream(client *rpcClient, request *pb.ExBuildGenericRequest) error {
 	if err := p.closeExGenericStreamClient(); err != nil {
 		return err
 	}
 
 	// Create stream client
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	ctx := context.Background()
 	var err error
 	if p.globalExGenericStreamClient, err = client.exServiceClient.ExBuildGenericStream(ctx, request); err != nil {
 		client.isValid = false
-		log.Errorf("Call to ExBuildGenericStreamClient returned error: %s", err)
+		log.Errorf("Call to ExBuildGenericStream returned error: %s", err)
 
 		return err
 	}
@@ -102,14 +104,21 @@ func (p rpcPlugin) setExStreamServiceClient(client *rpcClient, request *pb.ExBui
 	return nil
 }
 
-func (p rpcPlugin) pullExStreamServiceClient() (*pb.ExBuildGenericResponse, error) {
+func (p *rpcPlugin) pullExGenericStreamClient() (*pb.ExBuildGenericResponse, error) {
 	if p.globalExGenericStreamClient == nil {
-		return nil, nil
+		return nil, errors.New("stream client not available")
 	}
 
 	response, err := p.globalExGenericStreamClient.Recv()
 
 	if err != nil {
+		// If you are at EOF, then return nothing
+		if err.Error() == "EOF" {
+			return nil, nil
+		} else if s, ok := status.FromError(err); ok && s.Code() == codes.OutOfRange {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
@@ -291,12 +300,16 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 string, nParam2 int32) int32 {
 		return value
 	case rpcPullGenericStream:
 		p.resetBuildGeneric()
-		response, err := p.pullExStreamServiceClient()
+		response, err := p.pullExGenericStreamClient()
+		p.globalExGenericResponse = response
 
 		if response == nil || err != nil {
+			if err != nil {
+				log.Errorf("Response stream to ExBuildGenericStream returned error: %s", err)
+			}
+
 			return 0
 		}
-		p.globalExGenericResponse = response
 
 		return 1
 	}
@@ -486,7 +499,9 @@ func (p *rpcPlugin) setString(sFunction, sParam1 string, nParam2 int32, sValue s
 
 		// sValue_ contains the action
 		p.globalExGenericRequest.Action = sValue
-		_ = p.setExStreamServiceClient(client, p.globalExGenericRequest, p.config.getTimeout())
+		if err := p.buildExBuildGenericStream(client, p.globalExGenericRequest); err != nil {
+			log.Errorf("Call to ExBuildGenericStream returned error: %s", err)
+		}
 		p.resetBuildGeneric()
 
 		return
