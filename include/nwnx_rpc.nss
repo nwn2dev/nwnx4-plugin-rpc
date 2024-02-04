@@ -3,8 +3,10 @@ const string RPC_PLUGIN_ID = "RPC";
 
 const string RPC_PLUGIN_SEPARATOR = "!";
 
-const string RPC_RESET_BUILD_GENERIC = "RPC_RESET_BUILD_GENERIC_";
+const string RPC_RESET_GENERIC = "RPC_RESET_GENERIC_";
 const string RPC_BUILD_GENERIC = "RPC_BUILD_GENERIC_";
+const string RPC_BUILD_GENERIC_STREAM = "RPC_BUILD_GENERIC_STREAM_"
+const string RPC_PULL_GENERIC_STREAM = "RPC_PULL_GENERIC_STREAM_"
 
 const string RPC_GET_INT = "RPC_GET_INT_";
 const string RPC_SET_INT = "RPC_SET_INT_";
@@ -24,6 +26,8 @@ const int RPC_END_BUILD_GENERIC = 2;
 // CallAction
 void RPCResetBuildGenericEx();
 void RPCBuildGenericEx(string sClient, string sAction);
+void RPCBuildGenericStreamEx(string sClient, string sAction);
+int RPCPullGenericStreamEx();
 int RPCGetIntEx(string sParam1, int nParam2 = RPC_PARAM_2_DEFAULT);
 void RPCSetIntEx(string sParam1, int nValue, int nParam2 = RPC_PARAM_2_DEFAULT);
 int RPCGetBoolEx(string sParam1, int nParam2 = RPC_PARAM_2_DEFAULT);
@@ -36,11 +40,19 @@ object RPCRetrieveCampaignObjectEx(string sVarName, location coLocation, int nPa
 int RPCStoreCampaignObjectEx(string sVarName, object oObject, int nParam2 = RPC_PARAM_2_DEFAULT);
 
 void RPCResetBuildGenericEx() {
-	NWNXSetString(RPC_PLUGIN_ID, RPC_RESET_BUILD_GENERIC, "", RPC_PARAM_2_DEFAULT, "");
+	NWNXSetString(RPC_PLUGIN_ID, RPC_RESET_GENERIC, "", RPC_PARAM_2_DEFAULT, "");
 }
 
 void RPCBuildGenericEx(string sClient, string sAction) {
 	NWNXSetString(RPC_PLUGIN_ID, RPC_BUILD_GENERIC, sClient, RPC_PARAM_2_DEFAULT, sAction);
+}
+
+void RPCBuildGenericStreamEx(string sClient, string sAction) {
+	NWNXSetString(RPC_PLUGIN_ID, RPC_BUILD_GENERIC_STREAM, sClient, RPC_PARAM_2_DEFAULT, sAction);
+}
+
+void RPCPullGenericStreamEx() {
+	return NWNXGetInt(RPC_PLUGIN_ID, RPC_PULL_GENERIC_STREAM, "", RPC_PARAM_2_DEFAULT);
 }
 
 int RPCGetIntEx(string sParam1, int nParam2 = RPC_PARAM_2_DEFAULT) {

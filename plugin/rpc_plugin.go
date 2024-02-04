@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	log "github.com/sirupsen/logrus"
@@ -17,8 +18,10 @@ import (
 	"google.golang.org/grpc"
 )
 
-const rpcResetBuildGeneric string = "RPC_RESET_BUILD_GENERIC_"
+const rpcResetGeneric string = "RPC_RESET_GENERIC_"
 const rpcBuildGeneric string = "RPC_BUILD_GENERIC_"
+const rpcBuildGenericStream string = "RPC_BUILD_GENERIC_STREAM_"
+const rpcPullGenericStream string = "RPC_PULL_GENERIC_STREAM_"
 
 const rpcGetInt string = "RPC_GET_INT_"
 const rpcSetInt string = "RPC_SET_INT_"
@@ -36,35 +39,85 @@ const rpcStartBuildGeneric int32 = 1
 const rpcEndBuildGeneric int32 = 2
 
 type rpcPlugin struct {
-	config                       rpcConfig
-	creds                        credentials.TransportCredentials
-	clients                      map[string]*rpcClient
-	globalExBuildGenericRequest  *pb.ExBuildGenericRequest
-	globalExBuildGenericResponse *pb.ExBuildGenericResponse
+	config                      rpcConfig
+	creds                       credentials.TransportCredentials
+	clients                     map[string]*rpcClient
+	globalExGenericRequest      *pb.ExBuildGenericRequest
+	globalExGenericResponse     *pb.ExBuildGenericResponse
+	globalExGenericStreamClient pb.ExService_ExBuildGenericStreamClient
 }
 
 // newRpcPlugin builds and returns a new RPC plugin
 func newRpcPlugin() *rpcPlugin {
 	return &rpcPlugin{
-		config:                       rpcConfig{},
-		creds:                        insecure.NewCredentials(),
-		clients:                      make(map[string]*rpcClient),
-		globalExBuildGenericRequest:  newExBuildGenericRequest(),
-		globalExBuildGenericResponse: newExBuildGenericResponse(),
+		config:                      rpcConfig{},
+		creds:                       insecure.NewCredentials(),
+		clients:                     make(map[string]*rpcClient),
+		globalExGenericRequest:      newExGenericRequest(),
+		globalExGenericResponse:     newExGenericResponse(),
+		globalExGenericStreamClient: nil,
 	}
 }
 
-func newExBuildGenericRequest() *pb.ExBuildGenericRequest {
+func newExGenericRequest() *pb.ExBuildGenericRequest {
 	return &pb.ExBuildGenericRequest{
 		Action: "",
 		Params: make(map[string]*pb.Value),
 	}
 }
 
-func newExBuildGenericResponse() *pb.ExBuildGenericResponse {
+func newExGenericResponse() *pb.ExBuildGenericResponse {
 	return &pb.ExBuildGenericResponse{
 		Data: make(map[string]*pb.Value),
 	}
+}
+
+func (p rpcPlugin) closeExGenericStreamClient() error {
+	if p.globalExGenericStreamClient == nil {
+		return nil
+	}
+
+	err := p.globalExGenericStreamClient.CloseSend()
+	p.globalExGenericStreamClient = nil
+
+	return err
+}
+
+func (p rpcPlugin) setExStreamServiceClient(client *rpcClient, request *pb.ExBuildGenericRequest, timeout time.Duration) error {
+	if err := p.closeExGenericStreamClient(); err != nil {
+		return err
+	}
+
+	// Create stream client
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	var err error
+	if p.globalExGenericStreamClient, err = client.exServiceClient.ExBuildGenericStream(ctx, request); err != nil {
+		client.isValid = false
+		log.Errorf("Call to ExBuildGenericStreamClient returned error: %s", err)
+
+		return err
+	}
+
+	return nil
+}
+
+func (p rpcPlugin) pullExStreamServiceClient() (*pb.ExBuildGenericResponse, error) {
+	if p.globalExGenericStreamClient == nil {
+		return nil, nil
+	}
+
+	response, err := p.globalExGenericStreamClient.Recv()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if response == nil {
+		return nil, p.closeExGenericStreamClient()
+	}
+
+	return response, nil
 }
 
 // init initializes the RPC plugin
@@ -200,8 +253,8 @@ func (p *rpcPlugin) getRpcClient(name string) (*rpcClient, bool) {
 
 // Reset the call action request and response
 func (p *rpcPlugin) resetBuildGeneric() {
-	p.globalExBuildGenericRequest = newExBuildGenericRequest()
-	p.globalExBuildGenericResponse = newExBuildGenericResponse()
+	p.globalExGenericRequest = newExGenericRequest()
+	p.globalExGenericResponse = newExGenericResponse()
 }
 
 // getInt the body of the NWNXGetInt() call
@@ -212,7 +265,7 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 string, nParam2 int32) int32 {
 	switch sFunction {
 	case rpcGetInt:
 		var value int32 = 0
-		v, found := p.globalExBuildGenericResponse.Data[sParam1]
+		v, found := p.globalExGenericResponse.Data[sParam1]
 		if found {
 			value = v.GetNValue()
 		}
@@ -224,7 +277,7 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 string, nParam2 int32) int32 {
 		return value
 	case rpcGetBool:
 		var value int32 = 0
-		v, found := p.globalExBuildGenericResponse.Data[sParam1]
+		v, found := p.globalExGenericResponse.Data[sParam1]
 		if found {
 			if v.GetBValue() {
 				value = 1
@@ -236,6 +289,16 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 string, nParam2 int32) int32 {
 		}
 
 		return value
+	case rpcPullGenericStream:
+		p.resetBuildGeneric()
+		response, err := p.pullExStreamServiceClient()
+
+		if response == nil || err != nil {
+			return 0
+		}
+		p.globalExGenericResponse = response
+
+		return 1
 	}
 
 	// NWNXGetInt()
@@ -258,7 +321,7 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 string, nParam2, nValue int32) {
 			p.resetBuildGeneric()
 		}
 
-		p.globalExBuildGenericRequest.Params[sParam1] = &pb.Value{
+		p.globalExGenericRequest.Params[sParam1] = &pb.Value{
 			ValueType: &pb.Value_NValue{
 				NValue: nValue,
 			},
@@ -270,7 +333,7 @@ func (p *rpcPlugin) setInt(sFunction, sParam1 string, nParam2, nValue int32) {
 			p.resetBuildGeneric()
 		}
 
-		p.globalExBuildGenericRequest.Params[sParam1] = &pb.Value{
+		p.globalExGenericRequest.Params[sParam1] = &pb.Value{
 			ValueType: &pb.Value_BValue{
 				BValue: nValue != 0,
 			},
@@ -296,7 +359,7 @@ func (p *rpcPlugin) getFloat(sFunction, sParam1 string, nParam2 int32) float32 {
 	switch sFunction {
 	case rpcGetFloat:
 		var value float32 = 0.0
-		v, found := p.globalExBuildGenericResponse.Data[sParam1]
+		v, found := p.globalExGenericResponse.Data[sParam1]
 		if found {
 			value = v.GetFValue()
 		}
@@ -328,7 +391,7 @@ func (p *rpcPlugin) setFloat(sFunction, sParam1 string, nParam2 int32, fValue fl
 			p.resetBuildGeneric()
 		}
 
-		p.globalExBuildGenericRequest.Params[sParam1] = &pb.Value{
+		p.globalExGenericRequest.Params[sParam1] = &pb.Value{
 			ValueType: &pb.Value_FValue{
 				FValue: fValue,
 			},
@@ -354,7 +417,7 @@ func (p *rpcPlugin) getString(sFunction, sParam1 string, nParam2 int32) string {
 	switch sFunction {
 	case rpcGetString:
 		var value string = ""
-		v, found := p.globalExBuildGenericResponse.Data[sParam1]
+		v, found := p.globalExGenericResponse.Data[sParam1]
 		if found {
 			value = v.GetSValue()
 		}
@@ -386,14 +449,14 @@ func (p *rpcPlugin) setString(sFunction, sParam1 string, nParam2 int32, sValue s
 			p.resetBuildGeneric()
 		}
 
-		p.globalExBuildGenericRequest.Params[sParam1] = &pb.Value{
+		p.globalExGenericRequest.Params[sParam1] = &pb.Value{
 			ValueType: &pb.Value_SValue{
 				SValue: sValue,
 			},
 		}
 
 		return
-	case rpcResetBuildGeneric:
+	case rpcResetGeneric:
 		p.resetBuildGeneric()
 
 		return
@@ -405,13 +468,26 @@ func (p *rpcPlugin) setString(sFunction, sParam1 string, nParam2 int32, sValue s
 		}
 
 		// sValue_ contains the action
-		p.globalExBuildGenericRequest.Action = sValue
-		response, err := client.buildGeneric(p.globalExBuildGenericRequest, p.config.getTimeout())
+		p.globalExGenericRequest.Action = sValue
+		response, err := client.buildGeneric(p.globalExGenericRequest, p.config.getTimeout())
 		p.resetBuildGeneric()
 
 		if err == nil {
-			*p.globalExBuildGenericResponse = *response
+			*p.globalExGenericResponse = *response
 		}
+
+		return
+	case rpcBuildGenericStream:
+		// sParam1_ holds the client identifier
+		client, ok := p.getRpcClient(sParam1)
+		if !ok {
+			return
+		}
+
+		// sValue_ contains the action
+		p.globalExGenericRequest.Action = sValue
+		_ = p.setExStreamServiceClient(client, p.globalExGenericRequest, p.config.getTimeout())
+		p.resetBuildGeneric()
 
 		return
 	}
@@ -432,7 +508,7 @@ func (p *rpcPlugin) getGffSize(sFunction, sVarName string, _ int32) uint32 {
 	// ExBuildGeneric()
 	switch sFunction {
 	case rpcGetGff:
-		if v, found := p.globalExBuildGenericResponse.Data[sVarName]; found {
+		if v, found := p.globalExGenericResponse.Data[sVarName]; found {
 			return uint32(len(v.GetGffValue()))
 		}
 
@@ -456,7 +532,7 @@ func (p *rpcPlugin) getGff(sFunction, sVarName string, nParam2 int32) []byte {
 	switch sFunction {
 	case rpcGetGff:
 		var value []byte = nil
-		v, found := p.globalExBuildGenericResponse.Data[sVarName]
+		v, found := p.globalExGenericResponse.Data[sVarName]
 		if found {
 			value = v.GetGffValue()
 		}
@@ -488,7 +564,7 @@ func (p *rpcPlugin) setGff(sFunction, sVarName string, nParam2 int32, gffData []
 			p.resetBuildGeneric()
 		}
 
-		p.globalExBuildGenericRequest.Params[sVarName] = &pb.Value{
+		p.globalExGenericRequest.Params[sVarName] = &pb.Value{
 			ValueType: &pb.Value_GffValue{
 				GffValue: gffData,
 			},

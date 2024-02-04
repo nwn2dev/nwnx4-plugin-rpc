@@ -6,6 +6,7 @@ package NWNX4.RPC;
 
 service ExService {
   rpc ExBuildGeneric(ExBuildGenericRequest) returns (ExBuildGenericResponse);
+  rpc ExBuildGenericStream(ExBuildGenericRequest) returns (stream ExBuildGenericResponse);
 }
 
 message Value {
