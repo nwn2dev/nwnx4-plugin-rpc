@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ExServiceClient interface {
 	ExBuildGeneric(ctx context.Context, in *ExBuildGenericRequest, opts ...grpc.CallOption) (*ExBuildGenericResponse, error)
+	ExBuildGenericStream(ctx context.Context, in *ExBuildGenericRequest, opts ...grpc.CallOption) (ExService_ExBuildGenericStreamClient, error)
 }
 
 type exServiceClient struct {
@@ -42,11 +43,44 @@ func (c *exServiceClient) ExBuildGeneric(ctx context.Context, in *ExBuildGeneric
 	return out, nil
 }
 
+func (c *exServiceClient) ExBuildGenericStream(ctx context.Context, in *ExBuildGenericRequest, opts ...grpc.CallOption) (ExService_ExBuildGenericStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ExService_ServiceDesc.Streams[0], "/NWNX4.RPC.ExService/ExBuildGenericStream", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &exServiceExBuildGenericStreamClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type ExService_ExBuildGenericStreamClient interface {
+	Recv() (*ExBuildGenericResponse, error)
+	grpc.ClientStream
+}
+
+type exServiceExBuildGenericStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *exServiceExBuildGenericStreamClient) Recv() (*ExBuildGenericResponse, error) {
+	m := new(ExBuildGenericResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // ExServiceServer is the server API for ExService service.
 // All implementations must embed UnimplementedExServiceServer
 // for forward compatibility
 type ExServiceServer interface {
 	ExBuildGeneric(context.Context, *ExBuildGenericRequest) (*ExBuildGenericResponse, error)
+	ExBuildGenericStream(*ExBuildGenericRequest, ExService_ExBuildGenericStreamServer) error
 	mustEmbedUnimplementedExServiceServer()
 }
 
@@ -56,6 +90,9 @@ type UnimplementedExServiceServer struct {
 
 func (UnimplementedExServiceServer) ExBuildGeneric(context.Context, *ExBuildGenericRequest) (*ExBuildGenericResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExBuildGeneric not implemented")
+}
+func (UnimplementedExServiceServer) ExBuildGenericStream(*ExBuildGenericRequest, ExService_ExBuildGenericStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method ExBuildGenericStream not implemented")
 }
 func (UnimplementedExServiceServer) mustEmbedUnimplementedExServiceServer() {}
 
@@ -88,6 +125,27 @@ func _ExService_ExBuildGeneric_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ExService_ExBuildGenericStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ExBuildGenericRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ExServiceServer).ExBuildGenericStream(m, &exServiceExBuildGenericStreamServer{stream})
+}
+
+type ExService_ExBuildGenericStreamServer interface {
+	Send(*ExBuildGenericResponse) error
+	grpc.ServerStream
+}
+
+type exServiceExBuildGenericStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *exServiceExBuildGenericStreamServer) Send(m *ExBuildGenericResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // ExService_ServiceDesc is the grpc.ServiceDesc for ExService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -100,6 +158,12 @@ var ExService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ExService_ExBuildGeneric_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ExBuildGenericStream",
+			Handler:       _ExService_ExBuildGenericStream_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "ex.proto",
 }
