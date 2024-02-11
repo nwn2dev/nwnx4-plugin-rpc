@@ -24,7 +24,7 @@ import (
 const rpcResetGeneric string = "RPC_RESET_GENERIC_"
 const rpcBuildGeneric string = "RPC_BUILD_GENERIC_"
 const rpcBuildGenericStream string = "RPC_BUILD_GENERIC_STREAM_"
-const rpcPullGenericStream string = "RPC_PULL_GENERIC_STREAM_"
+const rpcNextGenericStream string = "RPC_NEXT_GENERIC_STREAM_"
 
 const rpcGetInt string = "RPC_GET_INT_"
 const rpcSetInt string = "RPC_SET_INT_"
@@ -104,7 +104,7 @@ func (p *rpcPlugin) buildExBuildGenericStream(client *rpcClient, request *pb.ExB
 	return nil
 }
 
-func (p *rpcPlugin) pullExGenericStreamClient() (*pb.ExBuildGenericResponse, error) {
+func (p *rpcPlugin) nextExGenericStreamClient() (*pb.ExBuildGenericResponse, error) {
 	if p.globalExGenericStreamClient == nil {
 		return nil, errors.New("stream client not available")
 	}
@@ -298,9 +298,9 @@ func (p *rpcPlugin) getInt(sFunction, sParam1 string, nParam2 int32) int32 {
 		}
 
 		return value
-	case rpcPullGenericStream:
+	case rpcNextGenericStream:
 		p.resetBuildGeneric()
-		response, err := p.pullExGenericStreamClient()
+		response, err := p.nextExGenericStreamClient()
 		p.globalExGenericResponse = response
 
 		if response == nil || err != nil {
