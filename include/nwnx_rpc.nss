@@ -6,7 +6,7 @@ const string RPC_PLUGIN_SEPARATOR = "!";
 const string RPC_RESET_GENERIC = "RPC_RESET_GENERIC_";
 const string RPC_BUILD_GENERIC = "RPC_BUILD_GENERIC_";
 const string RPC_BUILD_GENERIC_STREAM = "RPC_BUILD_GENERIC_STREAM_";
-const string RPC_PULL_GENERIC_STREAM = "RPC_PULL_GENERIC_STREAM_";
+const string RPC_NEXT_GENERIC_STREAM = "RPC_NEXT_GENERIC_STREAM_";
 
 const string RPC_GET_INT = "RPC_GET_INT_";
 const string RPC_SET_INT = "RPC_SET_INT_";
@@ -27,7 +27,7 @@ const int RPC_END_BUILD_GENERIC = 2;
 void RPCResetBuildGenericEx();
 void RPCBuildGenericEx(string sClient, string sAction);
 void RPCBuildGenericStreamEx(string sClient, string sAction);
-int RPCPullGenericStreamEx();
+int RPCNextGenericStreamEx();
 int RPCGetIntEx(string sParam1, int nParam2 = RPC_PARAM_2_DEFAULT);
 void RPCSetIntEx(string sParam1, int nValue, int nParam2 = RPC_PARAM_2_DEFAULT);
 int RPCGetBoolEx(string sParam1, int nParam2 = RPC_PARAM_2_DEFAULT);
@@ -51,8 +51,8 @@ void RPCBuildGenericStreamEx(string sClient, string sAction) {
 	NWNXSetString(RPC_PLUGIN_ID, RPC_BUILD_GENERIC_STREAM, sClient, RPC_PARAM_2_DEFAULT, sAction);
 }
 
-int RPCPullGenericStreamEx() {
-	return NWNXGetInt(RPC_PLUGIN_ID, RPC_PULL_GENERIC_STREAM, "", RPC_PARAM_2_DEFAULT);
+int RPCNextGenericStreamEx() {
+	return NWNXGetInt(RPC_PLUGIN_ID, RPC_NEXT_GENERIC_STREAM, "", RPC_PARAM_2_DEFAULT);
 }
 
 int RPCGetIntEx(string sParam1, int nParam2 = RPC_PARAM_2_DEFAULT) {
